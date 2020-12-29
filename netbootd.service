@@ -1,0 +1,13 @@
+[Unit]
+Description=netboot daemon includes DHCP, TFTP and HTTP service
+After=network.target
+
+[Service]
+Type=notify
+ExecStart=/usr/bin/netbootd
+#AmbientCapabilities=CAP_NET_BIND_SERVICE CAP_NET_RAW
+#User=nobody
+#Group=nobody
+
+[Install]
+WantedBy=multi-user.target
