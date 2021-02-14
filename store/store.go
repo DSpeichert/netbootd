@@ -160,3 +160,10 @@ func (s *Store) FindByMAC(mac net.HardwareAddr) *manifest.Manifest {
 
 	return s.mac[mac.String()]
 }
+
+func (s *Store) GetAll() map[string]*manifest.Manifest {
+	s.mutex.RLock()
+	defer s.mutex.RUnlock()
+
+	return s.manifests
+}

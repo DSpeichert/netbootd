@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+	"github.com/DSpeichert/netbootd/api"
 	"github.com/DSpeichert/netbootd/config"
 	"github.com/DSpeichert/netbootd/dhcpd"
 	"github.com/DSpeichert/netbootd/httpd"
@@ -22,6 +23,7 @@ var (
 	addr     string
 	ifname   string
 	httpPort int
+	apiPort  int
 )
 
 func init() {
@@ -31,6 +33,7 @@ func init() {
 
 	rootCmd.Flags().StringVarP(&addr, "address", "a", "", "IP address to listen on (DHCP, TFTP, HTTP)")
 	rootCmd.Flags().IntVarP(&httpPort, "http-port", "p", 8080, "HTTP port to listen on")
+	rootCmd.Flags().IntVarP(&apiPort, "api-port", "r", 8081, "HTTP API port to listen on")
 	rootCmd.Flags().StringVarP(&ifname, "interface", "i", "", "interface to listen on, e.g. eth0 (DHCP)")
 }
 
@@ -70,31 +73,44 @@ allows for complete flexibility in provisioning machines.`,
 		if err != nil {
 			log.Fatal().Err(err)
 		}
-		conn, err := net.ListenUDP("udp", &net.UDPAddr{
+		connTftp, err := net.ListenUDP("udp", &net.UDPAddr{
 			IP:   net.ParseIP(addr),
 			Port: 69, // TFTP
 		})
 		if err != nil {
 			log.Fatal().Err(err)
 		}
-		go tftpServer.Serve(conn)
+		go tftpServer.Serve(connTftp)
 
 		// HTTP service
 		httpServer, err := httpd.NewServer(store)
 		if err != nil {
 			log.Fatal().Err(err)
 		}
-		conn2, err := net.ListenTCP("tcp", &net.TCPAddr{
+		connHttp, err := net.ListenTCP("tcp", &net.TCPAddr{
 			IP:   net.ParseIP(addr),
 			Port: httpPort, // HTTP
 		})
 		if err != nil {
 			log.Fatal().Err(err)
 		}
-		go httpServer.Serve(conn2)
-		log.Info().Interface("addr", conn2.Addr()).Msg("HTTP listening")
+		go httpServer.Serve(connHttp)
+		log.Info().Interface("addr", connHttp.Addr()).Msg("HTTP listening")
 
 		// HTTP API service
+		apiServer, err := api.NewServer(store)
+		if err != nil {
+			log.Fatal().Err(err)
+		}
+		connApi, err := net.ListenTCP("tcp", &net.TCPAddr{
+			IP:   net.ParseIP(addr),
+			Port: apiPort, // HTTP
+		})
+		if err != nil {
+			log.Fatal().Err(err)
+		}
+		go apiServer.Serve(connApi)
+		log.Info().Interface("api", connApi.Addr()).Msg("HTTP API listening")
 
 		// notify systemd
 		sent, err := systemd.SdNotify(true, "READY=1\n")
