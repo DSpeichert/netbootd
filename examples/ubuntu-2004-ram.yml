@@ -1,0 +1,68 @@
+---
+# This example manifest boots Ubuntu 20.04 into ram using tmpfs-mounted root filesystem downloaded over HTTP
+id: ubuntu-2004-ram
+ipv4: 192.168.17.103/24
+hostname: ubuntu-2004-ram
+domain: test.local
+leaseDuration: 1h
+
+# many values are possible because a single machine may have multiple interfaces
+# and it may not be known which one boots first
+mac:
+  - 00:15:5d:bd:be:13
+
+# in the "order of preference"
+dns:
+  - 8.8.8.8
+  - 8.8.4.4
+  - 2001:4860:4860::8888
+  - 2001:4860:4860::8844
+
+# in the "order of preference"
+router:
+  - 192.168.17.1
+
+# in the "order of preference"
+ntp:
+  - pool.ntp.org
+
+ipxe: true
+bootFilename: install.ipxe
+
+mounts:
+  - path: /kernel
+    proxy: https://cloud-images.ubuntu.com/focal/current/unpacked/focal-server-cloudimg-amd64-vmlinuz-generic
+
+  # Note: There is no readily available initrd that has the necessary initramfs modules.
+  # Build one by installing packages: live-boot cloud-initramfs-rooturl
+  # http://manpages.ubuntu.com/manpages/focal/man7/live-boot.7.html
+  - path: /initrd
+    proxy: https://path.to.initrd...
+
+  - path: /root.tar.xz
+    proxy: https://cloud-images.ubuntu.com/focal/current/focal-server-cloudimg-amd64-root.tar.xz
+
+  - path: /install.ipxe
+    content: |
+      #!ipxe
+      # https://ipxe.org/scripting
+      kernel kernel initrd=initrd root={{ .HttpBaseUrl }}/root.tar.xz ip=dhcp ds=nocloud-net;s={{ .HttpBaseUrl }}/ network-config=disabled
+      initrd initrd
+      boot
+
+  - path: /meta-data
+    content: |
+      # empty
+
+  - path: /user-data
+    content: |
+      #cloud-config
+      preserve_sources_list: true
+      password: ubuntu
+      ssh_pwauth: yes
+      chpasswd:
+          expire: false
+
+  - path: /vendor-data
+    content: |
+      # empty
