@@ -18,12 +18,13 @@ import (
 )
 
 var (
-	debug    bool
-	trace    bool
-	addr     string
-	ifname   string
-	httpPort int
-	apiPort  int
+	debug        bool
+	trace        bool
+	addr         string
+	ifname       string
+	httpPort     int
+	apiPort      int
+	manifestPath string
 )
 
 func init() {
@@ -35,6 +36,7 @@ func init() {
 	rootCmd.Flags().IntVarP(&httpPort, "http-port", "p", 8080, "HTTP port to listen on")
 	rootCmd.Flags().IntVarP(&apiPort, "api-port", "r", 8081, "HTTP API port to listen on")
 	rootCmd.Flags().StringVarP(&ifname, "interface", "i", "", "interface to listen on, e.g. eth0 (DHCP)")
+	rootCmd.Flags().StringVarP(&manifestPath, "manifests", "m", "", "load manifests from directory")
 }
 
 var rootCmd = &cobra.Command{
@@ -58,7 +60,10 @@ allows for complete flexibility in provisioning machines.`,
 			// TODO: config
 			PersistenceDirectory: "",
 		})
-		_ = store.LoadFromDirectory("./examples")
+		if manifestPath != "" {
+			log.Info().Str("path", manifestPath).Msg("Loading manifests")
+			_ = store.LoadFromDirectory(manifestPath)
+		}
 		store.GlobalHints.HttpPort = httpPort
 
 		// DHCP
