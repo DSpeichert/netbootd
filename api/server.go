@@ -1,6 +1,7 @@
 package api
 
 import (
+	"encoding/json"
 	"github.com/DSpeichert/netbootd/manifest"
 	"github.com/DSpeichert/netbootd/store"
 	"github.com/gorilla/mux"
@@ -27,8 +28,7 @@ func NewServer(store *store.Store) (server *Server, err error) {
 	server = &Server{
 		router: r,
 		httpServer: &http.Server{
-			Handler: r,
-			// Good practice: enforce timeouts for servers you create!
+			Handler:        r,
 			WriteTimeout:   10 * time.Second,
 			ReadTimeout:    10 * time.Second,
 			MaxHeaderBytes: 1 << 20,
@@ -61,6 +61,7 @@ func NewServer(store *store.Store) (server *Server, err error) {
 		})
 	})
 
+	// GET /api/manifests
 	r.HandleFunc("/api/manifests", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/yaml")
 		w.WriteHeader(http.StatusOK)
@@ -69,6 +70,7 @@ func NewServer(store *store.Store) (server *Server, err error) {
 		w.Write(b)
 	}).Methods("GET")
 
+	// GET /api/manifests/{id}
 	r.HandleFunc("/api/manifests/{id}", func(w http.ResponseWriter, r *http.Request) {
 		vars := mux.Vars(r)
 		m := store.Find(vars["id"])
@@ -82,17 +84,28 @@ func NewServer(store *store.Store) (server *Server, err error) {
 		w.Write(b)
 	}).Methods("GET")
 
+	// PUT /api/manifests/{id}
 	r.HandleFunc("/api/manifests/{id}", func(w http.ResponseWriter, r *http.Request) {
 		buf, _ := ioutil.ReadAll(r.Body)
-		m, err := manifest.ManifestFromYaml(buf)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
-			return
+		var m manifest.Manifest
+		if r.Header.Get("Content-type") == "application/json" {
+			err = json.Unmarshal(buf, &m)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusBadRequest)
+				return
+			}
+		} else {
+			m, err = manifest.ManifestFromYaml(buf)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusBadRequest)
+				return
+			}
 		}
 		_ = store.PutManifest(m)
 		w.WriteHeader(http.StatusCreated)
 	}).Methods("PUT")
 
+	// DELETE /api/manifests/{id}
 	r.HandleFunc("/api/manifests/{id}", func(w http.ResponseWriter, r *http.Request) {
 		vars := mux.Vars(r)
 		store.ForgetManifest(vars["id"])
