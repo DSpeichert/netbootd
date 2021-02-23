@@ -1,3 +1,5 @@
+// Package dhcpd contains snippets from MIT-licensed coredhcp project at
+// https://github.com/coredhcp/coredhcp
 package dhcpd
 
 import (
