@@ -1,0 +1,27 @@
+project_name: netbootd
+before:
+  hooks:
+    - go mod download
+builds:
+  - binary: netbootd
+    # Default is `-s -w -X main.version={{.Version}} -X main.commit={{.Commit}} -X main.date={{.Date}} -X main.builtBy=goreleaser`.
+    ldflags:
+      - -s -w -X github.com/DSpeichert/netbootd/cmd.version={{.Version}} -X github.com/DSpeichert/netbootd/cmd.commit={{.ShortCommit}} -X github.com/DSpeichert/netbootd/cmd.date={{.Date}}
+    goos:
+      - linux
+    goarch:
+      - amd64
+
+archives:
+  - wrap_in_directory: true
+    format: tar.gz
+
+    # Additional files/globs you want to add to the archive.
+    # Defaults are any files matching `LICENCE*`, `LICENSE*`,
+    # `README*` and `CHANGELOG*` (case-insensitive).
+    files:
+      - examples/*
+      - CHANGELOG*
+      - README*
+      - LICENSE*
+      - netbootd.service
