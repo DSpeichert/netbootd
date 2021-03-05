@@ -36,14 +36,14 @@ netbootd exposes all "mounts" via both TFTP and HTTP simultatenously.
 Naturally, it's not a good idea to transfer really large files over TFTP but PXE generally
 requires use of TFTP in most cases.
 
-TFTP and HTTP content can either be static text (embedded in the manifest),
-generated content (using Go's `text/template` templating engine) or proxied to upstream HTTP(S).
-This last feature is mainly intended to proxy TFTP to HTTP(S) but very well may be used to
-reverse-proxy HTTP in otherwise isolated environments and can use a proxy itself
+TFTP and HTTP content can either be static text (embedded in the manifest), generated content (using
+Go's `text/template` templating engine) or proxied to upstream HTTP(S). This last feature is mainly intended to proxy
+TFTP to HTTP(S) but very well may be used to reverse-proxy HTTP in otherwise isolated environments and can use a proxy
+itself
 (`HTTP_PROXY` and `NO_PROXY` is honored automatically by Go).
 
-netbootd cannot serve local files. An exception is a bundled version of [iPXE](https://ipxe.org/),
-which allows to download (typically) kernel and initrd over HTTP instead of TFTP.
+netbootd cannot serve local files. An exception is a bundled version of [iPXE](https://ipxe.org/), which allows
+downloading (typically) kernel and initrd over HTTP instead of TFTP.
 
 ## Manifests
 
@@ -51,35 +51,98 @@ A manifest represents a machine to be provisioned/served. The behavior of built-
 DHCP, TFTP and HTTP server is specific to a manifest, meaning that it varies based
 on source MAC/IP. Each host may see different content at `/something` path.
 
-Note that this is not a security feature and you should not host any sensitive content.
-MAC and IPs can be easily spoofed. In fact, netbootd includes a convenience feature to
-spoof source IP for troubleshooting purposes. Append `?spoof=<ip-address>` to HTTP request
-to see the response for a particular host. There is no TFTP counterpart of this feature.
+Note that this is not a security feature and you should not host any sensitive content. MAC and IPs can be easily
+spoofed. In fact, netbootd includes a convenience feature to spoof source IP for troubleshooting purposes.
+Append `?spoof=<ip-address>` to HTTP request to see the response for a particular host. There is no TFTP counterpart of
+this feature.
 
 Example manifests are included in the `examples/` directory.
 
 ## HTTP API
 
-TODO.
+In this preview/development version, this HTTP API does not support authentication.
+
+<details>
+<summary>GET /api/manifests</summary>
+Returns a dictionary of all manifests keyed by their ID.
+
+Supports `Accept` header (if provided) that allows selecting a json output (`Accept: application/json`).
+</details>
+
+<details>
+<summary>GET /api/manifests/{id}</summary>
+Returns a single manifest with ID provided in the URL path.
+
+Supports `Accept` header (if provided) that allows selecting a json output (`Accept: application/json`).
+
+Returns:
+
+* 200 for successful response
+* 404 if manifest with provided ID does not exist
+
+</details>
+
+<details>
+<summary>PUT /api/manifests/{id}</summary>
+Accepts a manifest in either JSON (`Content-type: application/json`) or YAML (default) format.
+
+Returns:
+
+* 201 Created on success
+* 400 for malformed request (invalid manifest)
+
+</details>
+
+<details>
+<summary>DELETE /api/manifests/{id}</summary>
+Ensures that manifest with provided ID does not exist.
+
+Always returns 204, even if manifest already did not exist.
+</details>
+
+<details>
+<summary>GET|POST /api/self/suspend-boot</summary>
+Allows a provisioned host to ask not to be booted again.
+This does not block DHCP, TFTP or HTTP requests, it only removes NBP information from DHCP responses.
+
+This operation looks for a manifest matching the IP address of the requester. It is possible to spoof it
+with `?spoof=1.2.3.4` query parameter.
+</details>
+
+<details>
+<summary>GET|POST /api/self/unsuspend-boot</summary>
+Re-enables booting for a provisioned host.
+
+This operation looks for a manifest matching the IP address of the requester. It is possible to spoof it
+with `?spoof=1.2.3.4` query parameter.
+</details>
+
+<details>
+<summary>GET /api/self/manifest</summary>
+Returns a manifest matching requester's IP Address.
+
+Supports `Accept` header (if provided) that allows selecting a json output (`Accept: application/json`).
+
+This operation looks for a manifest matching the IP address of the requester. It is possible to spoof it
+with `?spoof=1.2.3.4` query parameter.
+</details>
 
 ## Usage
 
 ```
 Usage:
-  netbootd [flags]
+  netbootd server [flags]
 
 Flags:
   -a, --address string     IP address to listen on (DHCP, TFTP, HTTP)
   -r, --api-port int       HTTP API port to listen on (default 8081)
-  -d, --debug              enable debug logging
-  -h, --help               help for netbootd
+  -h, --help               help for server
   -p, --http-port int      HTTP port to listen on (default 8080)
   -i, --interface string   interface to listen on, e.g. eth0 (DHCP)
   -m, --manifests string   load manifests from directory
-      --trace              enable trace logging
 ```
 
-Run e.g. `./netbootd --trace -m ./examples/`
+Run e.g. `./netbootd --trace server -m ./examples/`
  
 ## Roadmap / TODOs
 

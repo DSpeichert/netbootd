@@ -11,6 +11,7 @@ import (
 	"io/ioutil"
 	"net"
 	"net/http"
+	"strings"
 	"time"
 )
 
@@ -63,10 +64,15 @@ func NewServer(store *store.Store) (server *Server, err error) {
 
 	// GET /api/manifests
 	r.HandleFunc("/api/manifests", func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "text/yaml")
+		var b []byte
+		if strings.Contains(r.Header.Get("Accept"), "application/json") {
+			w.Header().Set("Content-Type", "applications/json")
+			b, _ = json.Marshal(store.GetAll())
+		} else {
+			w.Header().Set("Content-Type", "text/yaml")
+			b, _ = yaml.Marshal(store.GetAll())
+		}
 		w.WriteHeader(http.StatusOK)
-
-		b, _ := yaml.Marshal(store.GetAll())
 		w.Write(b)
 	}).Methods("GET")
 
@@ -78,9 +84,15 @@ func NewServer(store *store.Store) (server *Server, err error) {
 			http.Error(w, "not found", http.StatusNotFound)
 			return
 		}
-		w.Header().Set("Content-Type", "text/yaml")
+		var b []byte
+		if strings.Contains(r.Header.Get("Accept"), "application/json") {
+			w.Header().Set("Content-Type", "applications/json")
+			b, _ = json.Marshal(store.GetAll())
+		} else {
+			w.Header().Set("Content-Type", "text/yaml")
+			b, _ = yaml.Marshal(store.GetAll())
+		}
 		w.WriteHeader(http.StatusOK)
-		b, _ := yaml.Marshal(m)
 		w.Write(b)
 	}).Methods("GET")
 
@@ -88,7 +100,7 @@ func NewServer(store *store.Store) (server *Server, err error) {
 	r.HandleFunc("/api/manifests/{id}", func(w http.ResponseWriter, r *http.Request) {
 		buf, _ := ioutil.ReadAll(r.Body)
 		var m manifest.Manifest
-		if r.Header.Get("Content-type") == "application/json" {
+		if r.Header.Get("Content-Type") == "application/json" {
 			err = json.Unmarshal(buf, &m)
 			if err != nil {
 				http.Error(w, err.Error(), http.StatusBadRequest)
@@ -113,6 +125,7 @@ func NewServer(store *store.Store) (server *Server, err error) {
 		w.WriteHeader(http.StatusNoContent)
 	}).Methods("DELETE")
 
+	// GET|POST /api/self/suspend-boot
 	r.HandleFunc("/api/self/suspend-boot", func(w http.ResponseWriter, r *http.Request) {
 		var ip net.IP
 		if queryFirst(r, "spoof") != "" {
@@ -130,8 +143,9 @@ func NewServer(store *store.Store) (server *Server, err error) {
 		m.Suspended = true
 
 		w.WriteHeader(http.StatusOK)
-	})
+	}).Methods("GET", "POST")
 
+	// GET|POST /api/self/unsuspend-boot
 	r.HandleFunc("/api/self/unsuspend-boot", func(w http.ResponseWriter, r *http.Request) {
 		var ip net.IP
 		if queryFirst(r, "spoof") != "" {
@@ -149,8 +163,9 @@ func NewServer(store *store.Store) (server *Server, err error) {
 		m.Suspended = false
 
 		w.WriteHeader(http.StatusOK)
-	})
+	}).Methods("GET", "POST")
 
+	// GET /api/self/manifest
 	r.HandleFunc("/api/self/manifest", func(w http.ResponseWriter, r *http.Request) {
 		var ip net.IP
 		if queryFirst(r, "spoof") != "" {
@@ -165,11 +180,17 @@ func NewServer(store *store.Store) (server *Server, err error) {
 			http.Error(w, "not found", http.StatusNotFound)
 			return
 		}
-		w.Header().Set("Content-Type", "text/yaml")
+		var b []byte
+		if strings.Contains(r.Header.Get("Accept"), "application/json") {
+			w.Header().Set("Content-Type", "applications/json")
+			b, _ = json.Marshal(store.GetAll())
+		} else {
+			w.Header().Set("Content-Type", "text/yaml")
+			b, _ = yaml.Marshal(store.GetAll())
+		}
 		w.WriteHeader(http.StatusOK)
-		buf, _ := yaml.Marshal(m)
-		w.Write(buf)
-	})
+		w.Write(b)
+	}).Methods("GET")
 
 	return server, nil
 }

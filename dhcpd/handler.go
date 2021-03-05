@@ -119,7 +119,7 @@ func (server *Server) HandleMsg4(buf []byte, oob *ipv4.ControlMessage, peer net.
 	}
 
 	// NBP
-	if req.IsOptionRequested(dhcpv4.OptionTFTPServerName) {
+	if req.IsOptionRequested(dhcpv4.OptionTFTPServerName) && !manifest.Suspended {
 		resp.Options.Update(dhcpv4.OptTFTPServerName(localIp.String()))
 	}
 
