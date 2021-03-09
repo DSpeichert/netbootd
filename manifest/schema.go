@@ -9,6 +9,7 @@ import (
 	"time"
 )
 
+// Manifest represents user-supplied per-host manifest information.
 // go-yaml accepts completely lowercase version of keys but is not case-insensitive
 // https://github.com/go-yaml/yaml/issues/123
 // some fields are forcefully mapped to camelCase instead of CamelCase and camelcase
@@ -21,13 +22,14 @@ type Manifest struct {
 	MAC           []HardwareAddr
 	DNS           []net.IP
 	Router        []net.IP
-	NTP           []string
+	NTP           []net.IP
 	Ipxe          bool
 	BootFilename  string `yaml:"bootFilename"`
 	Mounts        []Mount
 	Suspended     bool
 }
 
+// Mount represents a path exposed via TFTP and HTTP.
 type Mount struct {
 	// Path at which to select this mount.
 	Path string
@@ -88,12 +90,16 @@ func (m Mount) ProxyDirector() (func(req *http.Request), error) {
 	return director, nil
 }
 
-// Content template is evaluated with ContentContext
+// ContentContext is the template context available for static Content embedded in Manifests.
 type ContentContext struct {
-	LocalIP     net.IP
-	RemoteIP    net.IP
+	// Address of netbootd server
+	LocalIP net.IP
+	// Address of client
+	RemoteIP net.IP
+	// Base URL to the HTTP service (IP and port) - not API
 	HttpBaseUrl *url.URL
-	Manifest    *Manifest
+	// Copy of Manifest
+	Manifest *Manifest
 }
 
 // Return best matching Mount, respecting exact and prefix-based mount paths.

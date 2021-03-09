@@ -27,7 +27,7 @@ router:
 
 # in the "order of preference"
 ntp:
-  - pool.ntp.org
+  - 192.168.17.1
 
 ipxe: true
 bootFilename: install.ipxe

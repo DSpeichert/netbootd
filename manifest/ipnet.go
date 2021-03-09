@@ -4,7 +4,6 @@ import (
 	"net"
 )
 
-// An IPNet represents an IP network.
 type IPWithNet struct {
 	IP  net.IP
 	Net net.IPNet
