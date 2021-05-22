@@ -47,6 +47,11 @@ type Mount struct {
 	// Provides content template (passed through template/text) to serve.
 	// Mutually exclusive with Proxy option.
 	Content string
+
+	// Provides a path on the host to find the files.
+	// So that BasePath: /tftpboot path: /subdir and client requests: /tfptboot/subdir/file.x the path on the host
+	// becomes /tfptboot/subdir/file.x
+	BaseDir string `yaml:"baseDir"`
 }
 
 func (m Mount) ProxyDirector() (func(req *http.Request), error) {

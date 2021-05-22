@@ -3,17 +3,19 @@ package httpd
 import (
 	"bytes"
 	_ "embed"
-	mfest "github.com/DSpeichert/netbootd/manifest"
-	"github.com/DSpeichert/netbootd/static"
-	"github.com/Masterminds/sprig"
 	"io"
 	"net"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
+	"os"
 	"strings"
 	"text/template"
 	"time"
+
+	mfest "github.com/DSpeichert/netbootd/manifest"
+	"github.com/DSpeichert/netbootd/static"
+	"github.com/Masterminds/sprig"
 )
 
 type Handler struct {
@@ -129,8 +131,18 @@ func (h Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 		rp.ServeHTTP(w, r)
 		return
+	} else if mount.BaseDir != "" {
+		f, err := os.Open(mount.BaseDir + r.URL.Path)
+		if err != nil {
+			h.server.logger.Error().
+				Err(err).
+				Msg("Could not get file from BaseDir")
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
+		http.ServeContent(w, r, r.URL.Path, time.Time{}, f)
+		return
 	} else {
-		// mount has neither .Path nor .Proxy defined
+		// mount has neither .Path, .Proxy nor .BaseDir defined
 		h.server.logger.Error().
 			Str("path", r.RequestURI).
 			Str("client", raddr.String()).

@@ -111,6 +111,14 @@ mounts:
     # When true, the proxy path defined above gets a suffix to the Path prefix appended to it.
     proxyAppendSuffix: true
 
+    - path: /subdir
+    # When true, all paths starting with this prefix use this mount.
+    pathIsPrefix: true
+    # Provides a path on the host to find the files.
+    # So that BasePath: /tftpboot path: /subdir and client request: /subdir/file.x so that the host
+    # path becomes /tfptboot/subdir/file.x
+    baseDir: /tftpboot
+
   - path: /install.ipxe
     # The templating context provides access to: .LocalIP, .RemoteIP, .HttpBaseUrl and .Manifest.
     # Sprig functions are available: masterminds.github.io/sprig

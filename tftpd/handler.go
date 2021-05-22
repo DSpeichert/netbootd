@@ -5,15 +5,17 @@ import (
 	_ "embed"
 	"errors"
 	"fmt"
+	"io"
+	"net/http"
+	"net/url"
+	"os"
+	"strings"
+	"text/template"
+
 	mfest "github.com/DSpeichert/netbootd/manifest"
 	"github.com/DSpeichert/netbootd/static"
 	"github.com/Masterminds/sprig"
 	"github.com/pin/tftp"
-	"io"
-	"net/http"
-	"net/url"
-	"strings"
-	"text/template"
 )
 
 func (server *Server) tftpReadHandler(filename string, rf io.ReaderFrom) error {
@@ -150,6 +152,39 @@ func (server *Server) tftpReadHandler(filename string, rf io.ReaderFrom) error {
 		rf.(tftp.OutgoingTransfer).SetSize(int64(buf.Len()))
 
 		n, err := rf.ReadFrom(buf)
+		if err != nil {
+			server.logger.Error().
+				Msgf("ReadFrom failed: %v", err)
+			return err
+		}
+
+		server.logger.Info().
+			Err(err).
+			Str("path", filename).
+			Str("client", raddr.IP.String()).
+			Int64("sent", n).
+			Msg("transfer finished")
+	} else if mount.BaseDir != "" {
+		f, err := os.Open(mount.BaseDir + filename)
+		if err != nil {
+			server.logger.Error().
+				Err(err).
+				Msg("Could not get file from BaseDir")
+
+			return err
+		}
+
+		stat, err := f.Stat()
+		if err != nil {
+			server.logger.Error().
+				Err(err).
+				Msg("Could not get file host file stats")
+			return err
+		}
+
+		rf.(tftp.OutgoingTransfer).SetSize(int64(stat.Size()))
+
+		n, err := rf.ReadFrom(f)
 		if err != nil {
 			server.logger.Error().
 				Msgf("ReadFrom failed: %v", err)
