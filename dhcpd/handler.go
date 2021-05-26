@@ -4,10 +4,12 @@ package dhcpd
 
 import (
 	"errors"
+	"net"
+	"strings"
+
 	mfest "github.com/DSpeichert/netbootd/manifest"
 	"github.com/insomniacslk/dhcp/dhcpv4"
 	"golang.org/x/net/ipv4"
-	"net"
 )
 
 func (server *Server) HandleMsg4(buf []byte, oob *ipv4.ControlMessage, peer net.Addr) {
@@ -134,7 +136,11 @@ func (server *Server) HandleMsg4(buf []byte, oob *ipv4.ControlMessage, peer net.
 			resp.Options.Update(dhcpv4.OptBootFileName(manifest.BootFilename))
 		} else if len(req.ClientArch()) > 0 && req.ClientArch()[0] > 0 {
 			// likely UEFI (not BIOS)
-			resp.Options.Update(dhcpv4.OptBootFileName("ipxe.efi"))
+			if strings.Contains(req.ClassIdentifier(), "PXEClient:Arch:00011") {
+				resp.Options.Update(dhcpv4.OptBootFileName("ipxe_arm64.efi"))
+			} else {
+				resp.Options.Update(dhcpv4.OptBootFileName("ipxe.efi"))
+			}
 			//bootFileSize = 1
 		} else {
 			resp.Options.Update(dhcpv4.OptBootFileName("undionly.kpxe"))
