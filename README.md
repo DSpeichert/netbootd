@@ -111,7 +111,7 @@ mounts:
     # When true, the proxy path defined above gets a suffix to the Path prefix appended to it.
     proxyAppendSuffix: true
 
-    - path: /subdir
+  - path: /subdir
     # When true, all paths starting with this prefix use this mount.
     pathIsPrefix: true
     # Provides a path on the host to find the files.

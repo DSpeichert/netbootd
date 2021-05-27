@@ -49,9 +49,9 @@ type Mount struct {
 	Content string
 
 	// Provides a path on the host to find the files.
-	// So that BasePath: /tftpboot path: /subdir and client requests: /tfptboot/subdir/file.x the path on the host
+	// So that LocalDir: /tftpboot path: /subdir and client requests: /subdir/file.x the path on the host
 	// becomes /tfptboot/subdir/file.x
-	BaseDir string `yaml:"baseDir"`
+	LocalDir string `yaml:"localDir"`
 }
 
 func (m Mount) ProxyDirector() (func(req *http.Request), error) {

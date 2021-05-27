@@ -9,6 +9,7 @@ import (
 	"net/http/httputil"
 	"net/url"
 	"os"
+	"path/filepath"
 	"strings"
 	"text/template"
 	"time"
@@ -131,18 +132,28 @@ func (h Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 		rp.ServeHTTP(w, r)
 		return
-	} else if mount.BaseDir != "" {
-		f, err := os.Open(mount.BaseDir + r.URL.Path)
+	} else if mount.LocalDir != "" {
+		path := filepath.Join(mount.LocalDir, r.URL.Path)
+		f, err := os.Open(path)
 		if err != nil {
 			h.server.logger.Error().
 				Err(err).
-				Msg("Could not get file from BaseDir")
+				Msgf("Could not get file from local dir: %q", path)
 			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
 		}
-		http.ServeContent(w, r, r.URL.Path, time.Time{}, f)
+		stat, err := f.Stat()
+		if err != nil {
+			h.server.logger.Error().
+				Err(err).
+				Msgf("could not stat file: %q", path)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		http.ServeContent(w, r, r.URL.Path, stat.ModTime(), f)
 		return
 	} else {
-		// mount has neither .Path, .Proxy nor .BaseDir defined
+		// mount has neither .Path, .Proxy nor .LocalDir defined
 		h.server.logger.Error().
 			Str("path", r.RequestURI).
 			Str("client", raddr.String()).

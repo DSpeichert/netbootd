@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"path/filepath"
 	"strings"
 	"text/template"
 
@@ -164,12 +165,13 @@ func (server *Server) tftpReadHandler(filename string, rf io.ReaderFrom) error {
 			Str("client", raddr.IP.String()).
 			Int64("sent", n).
 			Msg("transfer finished")
-	} else if mount.BaseDir != "" {
-		f, err := os.Open(mount.BaseDir + filename)
+	} else if mount.LocalDir != "" {
+		path := filepath.Join(mount.LocalDir, filename)
+		f, err := os.Open(path)
 		if err != nil {
 			server.logger.Error().
 				Err(err).
-				Msg("Could not get file from BaseDir")
+				Msgf("Could not get file from local dir: %q", filename)
 
 			return err
 		}
@@ -178,7 +180,7 @@ func (server *Server) tftpReadHandler(filename string, rf io.ReaderFrom) error {
 		if err != nil {
 			server.logger.Error().
 				Err(err).
-				Msg("Could not get file host file stats")
+				Msgf("Could not stat file: %q", path)
 			return err
 		}
 

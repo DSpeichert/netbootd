@@ -3,10 +3,8 @@ package manifest
 import (
 	"encoding/json"
 	"fmt"
-	"path/filepath"
-	"strings"
-
 	"gopkg.in/yaml.v2"
+	"path/filepath"
 )
 
 func ManifestFromJson(content []byte) (manifest Manifest, err error) {
@@ -32,16 +30,11 @@ func ManifestFromYaml(content []byte) (manifest Manifest, err error) {
 }
 
 func (m Manifest) Validate() error {
-	for i, mount := range m.Mounts {
-		if mount.BaseDir != "" {
-			if !filepath.IsAbs(mount.BaseDir) {
-				return fmt.Errorf("BaseDir needs to be absolute path")
+	for _, mount := range m.Mounts {
+		if mount.LocalDir != "" {
+			if !filepath.IsAbs(mount.LocalDir) {
+				return fmt.Errorf("localDir needs to be absolute path")
 			}
-			if !strings.HasSuffix(mount.BaseDir, "/") {
-				mount.BaseDir = mount.BaseDir + "/"
-			}
-
-			m.Mounts[i] = mount
 		}
 	}
 
