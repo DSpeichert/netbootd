@@ -109,7 +109,7 @@ mounts:
     # When proxy is defined, these requests are proxied to a HTTP/HTTPS address.
     proxy: http://archive.ubuntu.com/ubuntu/dists/bionic-updates/main/installer-amd64/current/images/hwe-netboot/ubuntu-installer/amd64/
     # When true, the proxy path defined above gets a suffix to the Path prefix appended to it.
-    proxyAppendSuffix: true
+    appendSuffix: true
 
   - path: /subdir
     # When true, all paths starting with this prefix use this mount.

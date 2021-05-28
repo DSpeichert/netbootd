@@ -67,7 +67,7 @@ func (server *Server) tftpReadHandler(filename string, rf io.ReaderFrom) error {
 
 	if mount.Proxy != "" {
 		url := mount.Proxy
-		if mount.ProxyAppendSuffix {
+		if mount.AppendSuffix {
 			url = url + strings.TrimPrefix(filename, mount.Path)
 		}
 
@@ -167,6 +167,11 @@ func (server *Server) tftpReadHandler(filename string, rf io.ReaderFrom) error {
 			Msg("transfer finished")
 	} else if mount.LocalDir != "" {
 		path := filepath.Join(mount.LocalDir, filename)
+
+		if mount.AppendSuffix {
+			path = filepath.Join(mount.LocalDir, strings.TrimPrefix(filename, mount.Path))
+		}
+
 		f, err := os.Open(path)
 		if err != nil {
 			server.logger.Error().

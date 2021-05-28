@@ -134,6 +134,11 @@ func (h Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	} else if mount.LocalDir != "" {
 		path := filepath.Join(mount.LocalDir, r.URL.Path)
+
+		if mount.AppendSuffix {
+			path = filepath.Join(mount.LocalDir, strings.TrimPrefix(r.URL.Path, mount.Path))
+		}
+
 		f, err := os.Open(path)
 		if err != nil {
 			h.server.logger.Error().
