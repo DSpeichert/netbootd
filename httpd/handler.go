@@ -133,11 +133,19 @@ func (h Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		rp.ServeHTTP(w, r)
 		return
 	} else if mount.LocalDir != "" {
-		path := filepath.Join(mount.LocalDir, r.URL.Path)
-
+		path := filepath.Join(mount.LocalDir, mount.Path)
+		
 		if mount.AppendSuffix {
 			path = filepath.Join(mount.LocalDir, strings.TrimPrefix(r.URL.Path, mount.Path))
 		}
+		
+		if !strings.HasPrefix(path, mount.LocalDir) {
+			h.server.logger.Error().
+				Err(err).
+				Msgf("Requested path is invalid", path)
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		})
 
 		f, err := os.Open(path)
 		if err != nil {

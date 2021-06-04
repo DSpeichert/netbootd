@@ -50,7 +50,7 @@ type Mount struct {
 
 	// Provides a path on the host to find the files.
 	// So that LocalDir: /tftpboot path: /subdir and client requests: /subdir/file.x the path on the host
-	// becomes /tfptboot/subdir/file.x
+	// becomes /tfptboot/file.x
 	LocalDir string `yaml:"localDir"`
 }
 
