@@ -142,10 +142,10 @@ func (h Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		if !strings.HasPrefix(path, mount.LocalDir) {
 			h.server.logger.Error().
 				Err(err).
-				Msgf("Requested path is invalid", path)
+				Msgf("Requested path is invalid: %q", path)
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
-		})
+		}
 
 		f, err := os.Open(path)
 		if err != nil {

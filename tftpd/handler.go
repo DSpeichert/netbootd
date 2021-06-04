@@ -166,10 +166,18 @@ func (server *Server) tftpReadHandler(filename string, rf io.ReaderFrom) error {
 			Int64("sent", n).
 			Msg("transfer finished")
 	} else if mount.LocalDir != "" {
-		path := filepath.Join(mount.LocalDir, filename)
+		path := filepath.Join(mount.LocalDir, mount.Path)
 
 		if mount.AppendSuffix {
 			path = filepath.Join(mount.LocalDir, strings.TrimPrefix(filename, mount.Path))
+		}
+
+		if !strings.HasPrefix(path, mount.LocalDir) {
+			err := fmt.Errorf("requested path is invalid")
+			server.logger.Error().
+				Err(err).
+				Msgf("Requested path is invalid: %q", path)
+			return err
 		}
 
 		f, err := os.Open(path)
