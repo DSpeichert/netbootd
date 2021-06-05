@@ -40,13 +40,18 @@ type Mount struct {
 	// The proxy destination used when handling requests.
 	// Mutually exclusive with Content option.
 	Proxy string
-	// If PathIsPrefix is true and ProxyAppendSuffix is true, the suffix to Path Prefix will also be appended to Proxy.
+	// If PathIsPrefix is true and AppendSuffix is true, the suffix to Path Prefix will also be appended to Proxy Or LocalDir.
 	// Otherwise, it will be many to one proxy.
-	ProxyAppendSuffix bool `yaml:"proxyAppendSuffix"`
+	AppendSuffix bool `yaml:"appendSuffix"`
 
 	// Provides content template (passed through template/text) to serve.
 	// Mutually exclusive with Proxy option.
 	Content string
+
+	// Provides a path on the host to find the files.
+	// So that LocalDir: /tftpboot path: /subdir and client requests: /subdir/file.x the path on the host
+	// becomes /tfptboot/file.x
+	LocalDir string `yaml:"localDir"`
 }
 
 func (m Mount) ProxyDirector() (func(req *http.Request), error) {
@@ -72,7 +77,7 @@ func (m Mount) ProxyDirector() (func(req *http.Request), error) {
 			req.Header.Set("User-Agent", "")
 		}
 
-		if m.ProxyAppendSuffix {
+		if m.AppendSuffix {
 			req.URL.Path = target.Path + strings.TrimPrefix(req.URL.Path, m.Path)
 			req.URL.RawPath = target.RawPath + strings.TrimPrefix(req.URL.RawPath, m.Path)
 		} else {

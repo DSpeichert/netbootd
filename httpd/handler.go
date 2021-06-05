@@ -3,17 +3,20 @@ package httpd
 import (
 	"bytes"
 	_ "embed"
-	mfest "github.com/DSpeichert/netbootd/manifest"
-	"github.com/DSpeichert/netbootd/static"
-	"github.com/Masterminds/sprig"
 	"io"
 	"net"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
+	"os"
+	"path/filepath"
 	"strings"
 	"text/template"
 	"time"
+
+	mfest "github.com/DSpeichert/netbootd/manifest"
+	"github.com/DSpeichert/netbootd/static"
+	"github.com/Masterminds/sprig"
 )
 
 type Handler struct {
@@ -129,8 +132,41 @@ func (h Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 		rp.ServeHTTP(w, r)
 		return
+	} else if mount.LocalDir != "" {
+		path := filepath.Join(mount.LocalDir, mount.Path)
+		
+		if mount.AppendSuffix {
+			path = filepath.Join(mount.LocalDir, strings.TrimPrefix(r.URL.Path, mount.Path))
+		}
+		
+		if !strings.HasPrefix(path, mount.LocalDir) {
+			h.server.logger.Error().
+				Err(err).
+				Msgf("Requested path is invalid: %q", path)
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+
+		f, err := os.Open(path)
+		if err != nil {
+			h.server.logger.Error().
+				Err(err).
+				Msgf("Could not get file from local dir: %q", path)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		stat, err := f.Stat()
+		if err != nil {
+			h.server.logger.Error().
+				Err(err).
+				Msgf("could not stat file: %q", path)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		http.ServeContent(w, r, r.URL.Path, stat.ModTime(), f)
+		return
 	} else {
-		// mount has neither .Path nor .Proxy defined
+		// mount has neither .Path, .Proxy nor .LocalDir defined
 		h.server.logger.Error().
 			Str("path", r.RequestURI).
 			Str("client", raddr.String()).

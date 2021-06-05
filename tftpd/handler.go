@@ -5,15 +5,18 @@ import (
 	_ "embed"
 	"errors"
 	"fmt"
+	"io"
+	"net/http"
+	"net/url"
+	"os"
+	"path/filepath"
+	"strings"
+	"text/template"
+
 	mfest "github.com/DSpeichert/netbootd/manifest"
 	"github.com/DSpeichert/netbootd/static"
 	"github.com/Masterminds/sprig"
 	"github.com/pin/tftp"
-	"io"
-	"net/http"
-	"net/url"
-	"strings"
-	"text/template"
 )
 
 func (server *Server) tftpReadHandler(filename string, rf io.ReaderFrom) error {
@@ -64,7 +67,7 @@ func (server *Server) tftpReadHandler(filename string, rf io.ReaderFrom) error {
 
 	if mount.Proxy != "" {
 		url := mount.Proxy
-		if mount.ProxyAppendSuffix {
+		if mount.AppendSuffix {
 			url = url + strings.TrimPrefix(filename, mount.Path)
 		}
 
@@ -150,6 +153,53 @@ func (server *Server) tftpReadHandler(filename string, rf io.ReaderFrom) error {
 		rf.(tftp.OutgoingTransfer).SetSize(int64(buf.Len()))
 
 		n, err := rf.ReadFrom(buf)
+		if err != nil {
+			server.logger.Error().
+				Msgf("ReadFrom failed: %v", err)
+			return err
+		}
+
+		server.logger.Info().
+			Err(err).
+			Str("path", filename).
+			Str("client", raddr.IP.String()).
+			Int64("sent", n).
+			Msg("transfer finished")
+	} else if mount.LocalDir != "" {
+		path := filepath.Join(mount.LocalDir, mount.Path)
+
+		if mount.AppendSuffix {
+			path = filepath.Join(mount.LocalDir, strings.TrimPrefix(filename, mount.Path))
+		}
+
+		if !strings.HasPrefix(path, mount.LocalDir) {
+			err := fmt.Errorf("requested path is invalid")
+			server.logger.Error().
+				Err(err).
+				Msgf("Requested path is invalid: %q", path)
+			return err
+		}
+
+		f, err := os.Open(path)
+		if err != nil {
+			server.logger.Error().
+				Err(err).
+				Msgf("Could not get file from local dir: %q", filename)
+
+			return err
+		}
+
+		stat, err := f.Stat()
+		if err != nil {
+			server.logger.Error().
+				Err(err).
+				Msgf("Could not stat file: %q", path)
+			return err
+		}
+
+		rf.(tftp.OutgoingTransfer).SetSize(int64(stat.Size()))
+
+		n, err := rf.ReadFrom(f)
 		if err != nil {
 			server.logger.Error().
 				Msgf("ReadFrom failed: %v", err)
