@@ -15,8 +15,9 @@ netbootd aims to provide maximum flexibility and unlike Foreman or Cobbler makes
 no attempt to simplify the process of network booting. The results will be only
 as good as the configuration (the manifest in this case).
 
-netbootd's configuration consists of a set of manifest, each representing a machine. 
-In order to support automation-based workflow, manifests can be managed via a simple HTTP API.
+netbootd's configuration consists of a set of manifests, with each manifest representing a machine
+to be provisioned. Netbootd also provides a simple HTTP API for managing manifests, so that netbootd
+can become part of a larger automation workflow.
 
 **Note: This software is highly experimental, at proof-of-concept stage. It works
 but a lot of critical features are missing.**
@@ -229,4 +230,3 @@ Run e.g. `./netbootd --trace server -m ./examples/`
 * Pluggable store backends (e.g. Redis, Etcd, files) for Manifests
 * Notifications (e.g. long-polling wait to return when a given host actually booted)
 * Per-manifest logs available over API
-
