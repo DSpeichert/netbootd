@@ -119,7 +119,7 @@ mounts:
     # So that localDir: /tftpboot path: /subdir and client request: /subdir/file.x so that the host
     # path becomes /tfptboot/file.x
     localDir: /tftpboot
-   # When true, the localDir path defined above gets a suffix to the Path prefix appended to it.
+    # When true, the localDir path defined above gets a suffix to the Path prefix appended to it.
     appendSuffix: true
 
   - path: /install.ipxe
@@ -225,8 +225,8 @@ Run e.g. `./netbootd --trace server -m ./examples/`
  
 ## Roadmap / TODOs
 
-* API TLS & Authentication
-* Manifest persistence (currently API-configured manifests live in memory only)
-* Pluggable store backends (e.g. Redis, Etcd, files) for Manifests
-* Notifications (e.g. long-polling wait to return when a given host actually booted)
-* Per-manifest logs available over API
+* [x] API TLS & Authentication
+* [ ] Manifest persistence (currently API-configured manifests live in memory only)
+* [ ] Pluggable store backends (e.g. Redis, Etcd, files) for Manifests
+* [ ] Notifications (e.g. long-polling wait to return when a given host actually booted)
+* [ ] Per-manifest logs available over API

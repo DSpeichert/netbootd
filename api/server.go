@@ -23,7 +23,9 @@ type Server struct {
 	store  *store.Store
 }
 
-func NewServer(store *store.Store) (server *Server, err error) {
+// NewServer set up HTTP API server instance
+// If authorization is passed, requires privileged operation callers to present Authorization header with this content.
+func NewServer(store *store.Store, authorization string) (server *Server, err error) {
 	r := mux.NewRouter()
 
 	server = &Server{
@@ -64,6 +66,11 @@ func NewServer(store *store.Store) (server *Server, err error) {
 
 	// GET /api/manifests
 	r.HandleFunc("/api/manifests", func(w http.ResponseWriter, r *http.Request) {
+		if authorization != r.Header.Get("Authorization") {
+			http.Error(w, "Forbidden", http.StatusForbidden)
+			return
+		}
+
 		var b []byte
 		if strings.Contains(r.Header.Get("Accept"), "application/json") {
 			w.Header().Set("Content-Type", "applications/json")
@@ -78,6 +85,11 @@ func NewServer(store *store.Store) (server *Server, err error) {
 
 	// GET /api/manifests/{id}
 	r.HandleFunc("/api/manifests/{id}", func(w http.ResponseWriter, r *http.Request) {
+		if authorization != r.Header.Get("Authorization") {
+			http.Error(w, "Forbidden", http.StatusForbidden)
+			return
+		}
+
 		vars := mux.Vars(r)
 		m := store.Find(vars["id"])
 		if m == nil {
@@ -98,6 +110,11 @@ func NewServer(store *store.Store) (server *Server, err error) {
 
 	// PUT /api/manifests/{id}
 	r.HandleFunc("/api/manifests/{id}", func(w http.ResponseWriter, r *http.Request) {
+		if authorization != r.Header.Get("Authorization") {
+			http.Error(w, "Forbidden", http.StatusForbidden)
+			return
+		}
+
 		buf, _ := ioutil.ReadAll(r.Body)
 		var m manifest.Manifest
 		if r.Header.Get("Content-Type") == "application/json" {
@@ -119,6 +136,11 @@ func NewServer(store *store.Store) (server *Server, err error) {
 
 	// DELETE /api/manifests/{id}
 	r.HandleFunc("/api/manifests/{id}", func(w http.ResponseWriter, r *http.Request) {
+		if authorization != r.Header.Get("Authorization") {
+			http.Error(w, "Forbidden", http.StatusForbidden)
+			return
+		}
+
 		vars := mux.Vars(r)
 		store.ForgetManifest(vars["id"])
 
@@ -129,6 +151,10 @@ func NewServer(store *store.Store) (server *Server, err error) {
 	r.HandleFunc("/api/self/suspend-boot", func(w http.ResponseWriter, r *http.Request) {
 		var ip net.IP
 		if queryFirst(r, "spoof") != "" {
+			if authorization != r.Header.Get("Authorization") {
+				http.Error(w, "Forbidden", http.StatusForbidden)
+				return
+			}
 			ip = net.ParseIP(queryFirst(r, "spoof"))
 		} else {
 			host, _, _ := net.SplitHostPort(r.RemoteAddr)
@@ -149,6 +175,10 @@ func NewServer(store *store.Store) (server *Server, err error) {
 	r.HandleFunc("/api/self/unsuspend-boot", func(w http.ResponseWriter, r *http.Request) {
 		var ip net.IP
 		if queryFirst(r, "spoof") != "" {
+			if authorization != r.Header.Get("Authorization") {
+				http.Error(w, "Forbidden", http.StatusForbidden)
+				return
+			}
 			ip = net.ParseIP(queryFirst(r, "spoof"))
 		} else {
 			host, _, _ := net.SplitHostPort(r.RemoteAddr)
@@ -169,6 +199,10 @@ func NewServer(store *store.Store) (server *Server, err error) {
 	r.HandleFunc("/api/self/manifest", func(w http.ResponseWriter, r *http.Request) {
 		var ip net.IP
 		if queryFirst(r, "spoof") != "" {
+			if authorization != r.Header.Get("Authorization") {
+				http.Error(w, "Forbidden", http.StatusForbidden)
+				return
+			}
 			ip = net.ParseIP(queryFirst(r, "spoof"))
 		} else {
 			host, _, _ := net.SplitHostPort(r.RemoteAddr)
@@ -197,6 +231,10 @@ func NewServer(store *store.Store) (server *Server, err error) {
 
 func (server *Server) Serve(l net.Listener) error {
 	return server.httpServer.Serve(l)
+}
+
+func (server *Server) ServeTLS(l net.Listener, certFile string, keyFile string) error {
+	return server.httpServer.ServeTLS(l, certFile, keyFile)
 }
 
 func queryFirst(r *http.Request, k string) string {

@@ -107,7 +107,7 @@ type ContentContext struct {
 	Manifest *Manifest
 }
 
-// Return best matching Mount, respecting exact and prefix-based mount paths.
+// GetMount returns best matching Mount, respecting exact and prefix-based mount paths.
 // Longest path match is considered "best".
 // If the path in the Mount or being matched begins with a slash (/), it is ignored.
 func (m *Manifest) GetMount(path string) (Mount, error) {
