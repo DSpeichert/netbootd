@@ -1,0 +1,12 @@
+---
+# This is a sample config file for netbootd in YAML format.
+# You can use any format supported by https://github.com/spf13/viper.
+# Place this file in /etc/netbootd/ or current working directory.
+api:
+  # API endpoints can require static authentication via the HTTP "Authorization" header.
+  # Uncomment the following line and the value will be required in all API requests (except self-action).
+  #authorization: Bearer secretkey
+
+  # In order for API to use TLS, uncomment and set the following to the correct paths.
+  #TLSPrivateKeyPath: /etc/ssl/private.key
+  #TLSCertificatePath: /etc/ssl/certificate.pem

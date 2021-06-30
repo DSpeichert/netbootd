@@ -25,3 +25,4 @@ archives:
       - README*
       - LICENSE*
       - netbootd.service
+      - netbootd.yml

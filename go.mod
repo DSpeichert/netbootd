@@ -11,25 +11,18 @@ require (
 	github.com/google/uuid v1.2.0 // indirect
 	github.com/gorilla/mux v1.8.0
 	github.com/huandu/xstrings v1.3.2 // indirect
-	github.com/imdario/mergo v0.3.11 // indirect
-	github.com/insomniacslk/dhcp v0.0.0-20210120172423-cc9239ac6294
-	github.com/magiconair/properties v1.8.4 // indirect
-	github.com/mitchellh/copystructure v1.1.1 // indirect
-	github.com/mitchellh/mapstructure v1.4.1 // indirect
-	github.com/pelletier/go-toml v1.8.1 // indirect
+	github.com/imdario/mergo v0.3.12 // indirect
+	github.com/insomniacslk/dhcp v0.0.0-20210621130208-1cac67f12b1e
+	github.com/mitchellh/copystructure v1.2.0 // indirect
 	github.com/pin/tftp v2.1.0+incompatible
-	github.com/rs/zerolog v1.20.0
-	github.com/spf13/afero v1.5.1 // indirect
-	github.com/spf13/cast v1.3.1 // indirect
+	github.com/rs/zerolog v1.23.0
 	github.com/spf13/cobra v1.1.3
-	github.com/spf13/jwalterweatherman v1.1.0 // indirect
-	github.com/spf13/viper v1.7.1
+	github.com/spf13/viper v1.8.1
 	github.com/u-root/u-root v7.0.0+incompatible
-	golang.org/x/crypto v0.0.0-20210220033148-5ea612d1eb83 // indirect
-	golang.org/x/net v0.0.0-20210220033124-5f55cee0dc0d
-	golang.org/x/sys v0.0.0-20210220050731-9a76102bfb43
-	golang.org/x/text v0.3.5 // indirect
-	gopkg.in/ini.v1 v1.62.0 // indirect
+	github.com/u-root/uio v0.0.0-20210528151154-e40b768296a7 // indirect
+	golang.org/x/crypto v0.0.0-20210616213533-5ff15b29337e // indirect
+	golang.org/x/net v0.0.0-20210614182718-04defd469f4e
+	golang.org/x/sys v0.0.0-20210629170331-7dc0b73dc9fb
 	gopkg.in/yaml.v2 v2.4.0
 )
 
