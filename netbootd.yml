@@ -2,7 +2,22 @@
 # This is a sample config file for netbootd in YAML format.
 # You can use any format supported by https://github.com/spf13/viper.
 # Place this file in /etc/netbootd/ or current working directory.
+
+# Set address to listen on (DHCP, TFTP & HTTP)
+#address: 0.0.0.0
+
+# Set interface to listen on
+#interface: eth0
+
+# debug logging
+debug: false
+
+# trace logging (most verbose)
+trace: false
+
 api:
+  port: 8081
+
   # API endpoints can require static authentication via the HTTP "Authorization" header.
   # Uncomment the following line and the value will be required in all API requests (except self-action).
   #authorization: Bearer secretkey
@@ -10,3 +25,9 @@ api:
   # In order for API to use TLS, uncomment and set the following to the correct paths.
   #TLSPrivateKeyPath: /etc/ssl/private.key
   #TLSCertificatePath: /etc/ssl/certificate.pem
+
+http:
+  port: 8080
+
+# Set to directory from which initial manifests will be loaded at startup
+#manifestPath: /etc/netbootd/manifests/

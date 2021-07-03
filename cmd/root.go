@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/DSpeichert/netbootd/config"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 	"os"
 )
 
@@ -17,8 +18,11 @@ var (
 
 func init() {
 	cobra.OnInitialize(config.InitConfig)
-	rootCmd.Flags().BoolVarP(&debug, "debug", "d", false, "enable debug logging")
-	rootCmd.Flags().BoolVar(&trace, "trace", false, "enable trace logging")
+	rootCmd.PersistentFlags().BoolVarP(&debug, "debug", "d", false, "enable debug logging")
+	viper.BindPFlag("debug", rootCmd.Flags().Lookup("debug"))
+
+	rootCmd.PersistentFlags().BoolVar(&trace, "trace", false, "enable trace logging")
+	viper.BindPFlag("trace", rootCmd.Flags().Lookup("trace"))
 }
 
 var rootCmd = &cobra.Command{

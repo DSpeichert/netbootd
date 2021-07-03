@@ -28,15 +28,26 @@ var (
 
 func init() {
 	serverCmd.Flags().StringVarP(&addr, "address", "a", "", "IP address to listen on (DHCP, TFTP, HTTP)")
-	serverCmd.Flags().IntVarP(&httpPort, "http-port", "p", 8080, "HTTP port to listen on")
-	serverCmd.Flags().IntVarP(&apiPort, "api-port", "r", 8081, "HTTP API port to listen on")
-	serverCmd.Flags().StringVar(&apiTlsCert, "api-tls-cert", "", "Path to TLS certificate API")
-	serverCmd.Flags().StringVar(&apiTlsKey, "api-tls-key", "", "Path to TLS certificate for API")
-	serverCmd.Flags().StringVarP(&ifname, "interface", "i", "", "interface to listen on, e.g. eth0 (DHCP)")
-	serverCmd.Flags().StringVarP(&manifestPath, "manifests", "m", "", "load manifests from directory")
+	viper.BindPFlag("address", serverCmd.Flags().Lookup("address"))
 
+	serverCmd.Flags().IntVarP(&httpPort, "http-port", "p", 8080, "HTTP port to listen on")
+	viper.BindPFlag("http.port", serverCmd.Flags().Lookup("http-port"))
+
+	serverCmd.Flags().IntVarP(&apiPort, "api-port", "r", 8081, "HTTP API port to listen on")
+	viper.BindPFlag("api.port", serverCmd.Flags().Lookup("api-port"))
+
+	serverCmd.Flags().StringVar(&apiTlsCert, "api-tls-cert", "", "Path to TLS certificate API")
 	viper.BindPFlag("api.TLSCertificatePath", serverCmd.Flags().Lookup("api-tls-cert"))
+
+	serverCmd.Flags().StringVar(&apiTlsKey, "api-tls-key", "", "Path to TLS certificate for API")
 	viper.BindPFlag("api.TLSPrivateKeyPath", serverCmd.Flags().Lookup("api-tls-key"))
+
+	serverCmd.Flags().StringVarP(&ifname, "interface", "i", "", "interface to listen on, e.g. eth0 (DHCP)")
+	viper.BindPFlag("interface", serverCmd.Flags().Lookup("interface"))
+
+	serverCmd.Flags().StringVarP(&manifestPath, "manifests", "m", "", "load manifests from directory")
+	viper.BindPFlag("manifestPath", serverCmd.Flags().Lookup("manifests"))
+
 	rootCmd.AddCommand(serverCmd)
 }
 
@@ -44,9 +55,9 @@ var serverCmd = &cobra.Command{
 	Use: "server",
 	Run: func(cmd *cobra.Command, args []string) {
 		// configure logging
-		if trace {
+		if viper.GetBool("trace") {
 			zerolog.SetGlobalLevel(zerolog.TraceLevel)
-		} else if debug {
+		} else if viper.GetBool("debug") {
 			zerolog.SetGlobalLevel(zerolog.DebugLevel)
 		} else {
 			zerolog.SetGlobalLevel(zerolog.InfoLevel)
@@ -57,14 +68,14 @@ var serverCmd = &cobra.Command{
 			// TODO: config
 			PersistenceDirectory: "",
 		})
-		if manifestPath != "" {
-			log.Info().Str("path", manifestPath).Msg("Loading manifests")
-			_ = store.LoadFromDirectory(manifestPath)
+		if viper.GetString("manifestPath") != "" {
+			log.Info().Str("path", viper.GetString("manifestPath")).Msg("Loading manifests")
+			_ = store.LoadFromDirectory(viper.GetString("manifestPath"))
 		}
-		store.GlobalHints.HttpPort = httpPort
+		store.GlobalHints.HttpPort = viper.GetInt("http.port")
 
 		// DHCP
-		dhcpServer, err := dhcpd.NewServer(addr, ifname, store)
+		dhcpServer, err := dhcpd.NewServer(viper.GetString("address"), viper.GetString("interface"), store)
 		if err != nil {
 			log.Fatal().Err(err)
 		}
@@ -76,7 +87,7 @@ var serverCmd = &cobra.Command{
 			log.Fatal().Err(err)
 		}
 		connTftp, err := net.ListenUDP("udp", &net.UDPAddr{
-			IP:   net.ParseIP(addr),
+			IP:   net.ParseIP(viper.GetString("address")),
 			Port: 69, // TFTP
 		})
 		if err != nil {
@@ -90,8 +101,8 @@ var serverCmd = &cobra.Command{
 			log.Fatal().Err(err)
 		}
 		connHttp, err := net.ListenTCP("tcp", &net.TCPAddr{
-			IP:   net.ParseIP(addr),
-			Port: httpPort, // HTTP
+			IP:   net.ParseIP(viper.GetString("address")),
+			Port: viper.GetInt("http.port"), // HTTP
 		})
 		if err != nil {
 			log.Fatal().Err(err)
@@ -105,8 +116,8 @@ var serverCmd = &cobra.Command{
 			log.Fatal().Err(err)
 		}
 		connApi, err := net.ListenTCP("tcp", &net.TCPAddr{
-			IP:   net.ParseIP(addr),
-			Port: apiPort, // HTTP
+			IP:   net.ParseIP(viper.GetString("address")),
+			Port: viper.GetInt("api.port"), // HTTP
 		})
 		if err != nil {
 			log.Fatal().Err(err)
@@ -121,7 +132,7 @@ var serverCmd = &cobra.Command{
 			go apiServer.Serve(connApi)
 			log.Info().Interface("api", connApi.Addr()).Msg("HTTP API listening...")
 			go func() {
-				go apiServer.Serve(connApi)
+				err := apiServer.Serve(connApi)
 				log.Error().Err(err).Msg("Error initializing HTTP API listener!")
 			}()
 		}
