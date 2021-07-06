@@ -64,25 +64,6 @@ func NewServer(store *store.Store, authorization string) (server *Server, err er
 		})
 	})
 
-	// GET /api/manifests
-	r.HandleFunc("/api/manifests", func(w http.ResponseWriter, r *http.Request) {
-		if authorization != r.Header.Get("Authorization") {
-			http.Error(w, "Forbidden", http.StatusForbidden)
-			return
-		}
-
-		var b []byte
-		if strings.Contains(r.Header.Get("Accept"), "application/json") {
-			w.Header().Set("Content-Type", "applications/json")
-			b, _ = json.Marshal(store.GetAll())
-		} else {
-			w.Header().Set("Content-Type", "text/yaml")
-			b, _ = yaml.Marshal(store.GetAll())
-		}
-		w.WriteHeader(http.StatusOK)
-		w.Write(b)
-	}).Methods("GET")
-
 	// GET /api/manifests/{id}
 	r.HandleFunc("/api/manifests/{id}", func(w http.ResponseWriter, r *http.Request) {
 		if authorization != r.Header.Get("Authorization") {
@@ -96,6 +77,25 @@ func NewServer(store *store.Store, authorization string) (server *Server, err er
 			http.Error(w, "not found", http.StatusNotFound)
 			return
 		}
+		var b []byte
+		if strings.Contains(r.Header.Get("Accept"), "application/json") {
+			w.Header().Set("Content-Type", "applications/json")
+			b, _ = json.Marshal(store.GetAll())
+		} else {
+			w.Header().Set("Content-Type", "text/yaml")
+			b, _ = yaml.Marshal(store.GetAll())
+		}
+		w.WriteHeader(http.StatusOK)
+		w.Write(b)
+	}).Methods("GET")
+
+	// GET /api/manifests
+	r.HandleFunc("/api/manifests", func(w http.ResponseWriter, r *http.Request) {
+		if authorization != r.Header.Get("Authorization") {
+			http.Error(w, "Forbidden", http.StatusForbidden)
+			return
+		}
+
 		var b []byte
 		if strings.Contains(r.Header.Get("Accept"), "application/json") {
 			w.Header().Set("Content-Type", "applications/json")
