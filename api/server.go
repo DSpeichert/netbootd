@@ -80,10 +80,10 @@ func NewServer(store *store.Store, authorization string) (server *Server, err er
 		var b []byte
 		if strings.Contains(r.Header.Get("Accept"), "application/json") {
 			w.Header().Set("Content-Type", "applications/json")
-			b, _ = json.Marshal(store.GetAll())
+			b, _ = json.Marshal(m)
 		} else {
 			w.Header().Set("Content-Type", "text/yaml")
-			b, _ = yaml.Marshal(store.GetAll())
+			b, _ = yaml.Marshal(m)
 		}
 		w.WriteHeader(http.StatusOK)
 		w.Write(b)
