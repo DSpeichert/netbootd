@@ -76,7 +76,7 @@ func (server *Server) HandleMsg4(buf []byte, oob *ipv4.ControlMessage, peer net.
 
 	manifest = server.store.FindByMAC(req.ClientHWAddr)
 	if manifest == nil {
-		server.logger.Debug().
+		server.logger.Info().
 			Str("MAC", req.ClientHWAddr.String()).
 			Msg("ignore packet from unknown MAC")
 		resp = nil
@@ -221,7 +221,7 @@ response:
 			}
 		}
 
-		server.logger.Trace().
+		server.logger.Debug().
 			Interface("response", resp).
 			Msg("sending DHCP packet")
 
@@ -233,7 +233,7 @@ response:
 		}
 
 	} else {
-		server.logger.Info().
+		server.logger.Trace().
 			Msg("dropping request because response is nil")
 	}
 }
