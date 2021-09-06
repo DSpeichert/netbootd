@@ -7,7 +7,6 @@ import (
 	"github.com/rs/zerolog/log"
 	"net"
 	"net/http"
-	"time"
 )
 
 type Server struct {
@@ -21,11 +20,9 @@ type Server struct {
 func NewServer(store *store.Store) (server *Server, err error) {
 
 	server = &Server{
-		httpClient: &http.Client{
-			Timeout: time.Second * 30,
-		},
-		logger: log.With().Str("service", "tftp").Logger(),
-		store:  store,
+		httpClient: &http.Client{},
+		logger:     log.With().Str("service", "tftp").Logger(),
+		store:      store,
 	}
 
 	return server, nil

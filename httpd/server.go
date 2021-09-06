@@ -22,7 +22,6 @@ func NewServer(store *store.Store) (server *Server, err error) {
 	server = &Server{
 		httpServer: &http.Server{
 			ReadTimeout:    10 * time.Second,
-			WriteTimeout:   10 * time.Second,
 			MaxHeaderBytes: 1 << 20,
 			IdleTimeout:    10 * time.Second,
 		},
