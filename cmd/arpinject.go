@@ -1,7 +1,7 @@
 package cmd
 
 import (
-	"github.com/DSpeichert/netbootd/dhcpd"
+	"github.com/DSpeichert/netbootd/dhcpd/arp"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 	"net"
@@ -31,7 +31,7 @@ var arpInjectCmd = &cobra.Command{
 				Err(err).
 				Msg("cannot parse mac")
 		}
-		if err = dhcpd.InjectArp(parsedIp, parsedMac, dhcpd.ATF_COM, device); err != nil {
+		if err = arp.InjectArp(parsedIp, parsedMac, arp.ATF_COM, device); err != nil {
 			log.Error().
 				Err(err).
 				Msg("cannot inject arp entry")

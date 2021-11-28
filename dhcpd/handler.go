@@ -5,8 +5,10 @@ package dhcpd
 import (
 	"errors"
 	"net"
+	"runtime"
 	"strings"
 
+	"github.com/DSpeichert/netbootd/dhcpd/arp"
 	mfest "github.com/DSpeichert/netbootd/manifest"
 	"github.com/insomniacslk/dhcp/dhcpv4"
 	"golang.org/x/net/ipv4"
@@ -69,6 +71,7 @@ func (server *Server) HandleMsg4(buf []byte, oob *ipv4.ControlMessage, peer net.
 	if err != nil {
 		server.logger.Error().
 			Err(err).
+			Int("ifIndex", ifIndex).
 			Msg("failed to find local interface")
 		resp = nil
 		goto response
@@ -187,9 +190,9 @@ response:
 			rawConn, err := server.UdpConn.SyscallConn()
 			if device != "" && err == nil {
 				rawConn.Control(func(fd uintptr) {
-					err = InjectArpFd(fd, resp.YourIPAddr, req.ClientHWAddr, ATF_COM, device)
+					err = arp.InjectArpFd(fd, resp.YourIPAddr, req.ClientHWAddr, arp.ATF_COM, device)
 				})
-				if err != nil {
+				if err != nil && runtime.GOOS == "linux" {
 					server.logger.Error().
 						Err(err).
 						Msg("ioctl failed")

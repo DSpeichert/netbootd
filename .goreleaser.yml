@@ -9,8 +9,13 @@ builds:
       - -s -w -X github.com/DSpeichert/netbootd/cmd.version={{.Version}} -X github.com/DSpeichert/netbootd/cmd.commit={{.ShortCommit}} -X github.com/DSpeichert/netbootd/cmd.date={{.Date}}
     goos:
       - linux
+      - darwin
     goarch:
       - amd64
+      - arm
+      - arm64
+    goarm:
+      - 7
 
 archives:
   - wrap_in_directory: true
