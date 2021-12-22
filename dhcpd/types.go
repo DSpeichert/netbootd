@@ -2,7 +2,7 @@ package dhcpd
 
 import (
 	"fmt"
-	"github.com/u-root/u-root/pkg/uio"
+	"github.com/u-root/uio/uio"
 )
 
 // Uint8 mirrors dhcpv4.Uint16
