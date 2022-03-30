@@ -36,7 +36,7 @@ mounts:
   - path: /netboot
     pathIsPrefix: true
     proxy: http://archive.ubuntu.com/ubuntu/dists/bionic-updates/main/installer-amd64/current/images/hwe-netboot/ubuntu-installer/amd64/
-    proxyAppendSuffix: true
+    appendSuffix: true
 
   - path: /install.ipxe
     content: |

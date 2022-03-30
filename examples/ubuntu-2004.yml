@@ -32,7 +32,7 @@ mounts:
   - path: /
     pathIsPrefix: true
     proxy: http://archive.ubuntu.com/ubuntu/dists/focal-updates/main/installer-amd64/current/legacy-images/netboot/ubuntu-installer/amd64/
-    proxyAppendSuffix: true
+    appendSuffix: true
 
   - path: /install.ipxe
     content: |
