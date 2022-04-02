@@ -43,7 +43,8 @@ TFTP to HTTP(S) but very well may be used to reverse-proxy HTTP in otherwise iso
 itself
 (`HTTP_PROXY` and `NO_PROXY` is honored automatically by Go).
 
-netbootd cannot serve local files. An exception is a bundled version of [iPXE](https://ipxe.org/), which allows
+netbootd can serve local files using the `path.localDir` configuration option.
+netbootd also contains a bundled version of [iPXE](https://ipxe.org/), which allows
 downloading (typically) kernel and initrd over HTTP instead of TFTP.
 
 ## Manifests
