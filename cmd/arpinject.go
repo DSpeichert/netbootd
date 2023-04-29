@@ -3,6 +3,7 @@ package cmd
 import (
 	"net"
 
+	"github.com/DSpeichert/netbootd/config"
 	"github.com/DSpeichert/netbootd/dhcpd/arp"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
