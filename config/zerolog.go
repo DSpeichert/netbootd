@@ -25,7 +25,7 @@ func InitZeroLog() {
 	if !zerologInitDone {
 		if ZeroLogJournalDEnabled {
 			log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr})
-			log.Debug().Msg("Enabled consoler writer")
+			log.Debug().Msg("Enabled console writer")
 		} else {
 			journalWriter := journald.NewJournalDWriter()
 			multi := io.MultiWriter(zerolog.ConsoleWriter{Out: os.Stderr}, journalWriter)
