@@ -1,10 +1,12 @@
 package cmd
 
 import (
+	"net"
+
+	"github.com/DSpeichert/netbootd/config"
 	"github.com/DSpeichert/netbootd/dhcpd/arp"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
-	"net"
 )
 
 var (
@@ -24,6 +26,7 @@ func init() {
 var arpInjectCmd = &cobra.Command{
 	Use: "arpinject",
 	Run: func(cmd *cobra.Command, args []string) {
+		config.InitZeroLog()
 		parsedIp := net.ParseIP(ip)
 		parsedMac, err := net.ParseMAC(mac)
 		if err != nil {

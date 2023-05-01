@@ -2,10 +2,11 @@ package cmd
 
 import (
 	"fmt"
+	"os"
+
 	"github.com/DSpeichert/netbootd/config"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
-	"os"
 )
 
 var (
@@ -23,6 +24,9 @@ func init() {
 
 	rootCmd.PersistentFlags().BoolVar(&trace, "trace", false, "enable trace logging")
 	viper.BindPFlag("trace", rootCmd.Flags().Lookup("trace"))
+
+	rootCmd.PersistentFlags().BoolVar(&config.ZeroLogJournalDEnabled, "disable-journal-logger", false, "disable zerolog journald logger")
+	viper.BindPFlag("disable-journal-logger", rootCmd.Flags().Lookup("disable-journal-logger"))
 }
 
 var rootCmd = &cobra.Command{
@@ -36,6 +40,7 @@ allows for complete flexibility in provisioning machines.`,
 
 func Execute() {
 	if err := rootCmd.Execute(); err != nil {
+		config.InitZeroLog()
 		fmt.Println(err)
 		os.Exit(1)
 	}

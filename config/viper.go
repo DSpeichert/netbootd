@@ -23,6 +23,7 @@ func InitConfig() {
 
 	err := viper.ReadInConfig()
 	if err != nil {
+		InitZeroLog()
 		log.Debug().
 			Err(err).
 			Msg("error reading config file")

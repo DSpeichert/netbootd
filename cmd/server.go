@@ -1,7 +1,12 @@
 package cmd
 
 import (
+	"net"
+	"os"
+	"os/signal"
+
 	"github.com/DSpeichert/netbootd/api"
+	"github.com/DSpeichert/netbootd/config"
 	"github.com/DSpeichert/netbootd/dhcpd"
 	"github.com/DSpeichert/netbootd/httpd"
 	"github.com/DSpeichert/netbootd/store"
@@ -11,9 +16,6 @@ import (
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
-	"net"
-	"os"
-	"os/signal"
 )
 
 var (
@@ -55,6 +57,7 @@ var serverCmd = &cobra.Command{
 	Use: "server",
 	Run: func(cmd *cobra.Command, args []string) {
 		// configure logging
+		config.InitZeroLog()
 		if viper.GetBool("trace") {
 			zerolog.SetGlobalLevel(zerolog.TraceLevel)
 		} else if viper.GetBool("debug") {

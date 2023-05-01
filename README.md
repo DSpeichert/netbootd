@@ -214,12 +214,19 @@ Usage:
   netbootd server [flags]
 
 Flags:
-  -a, --address string     IP address to listen on (DHCP, TFTP, HTTP)
-  -r, --api-port int       HTTP API port to listen on (default 8081)
-  -h, --help               help for server
-  -p, --http-port int      HTTP port to listen on (default 8080)
-  -i, --interface string   interface to listen on, e.g. eth0 (DHCP)
-  -m, --manifests string   load manifests from directory
+  -a, --address string        IP address to listen on (DHCP, TFTP, HTTP)
+  -r, --api-port int          HTTP API port to listen on (default 8081)
+      --api-tls-cert string   Path to TLS certificate API
+      --api-tls-key string    Path to TLS certificate for API
+  -h, --help                  help for server
+  -p, --http-port int         HTTP port to listen on (default 8080)
+  -i, --interface string      interface to listen on, e.g. eth0 (DHCP)
+  -m, --manifests string      load manifests from directory
+
+Global Flags:
+  -d, --debug                    enable debug logging
+      --disable-journal-logger   disable zerolog journald logger
+      --trace                    enable trace logging
 ```
 
 Run e.g. `./netbootd --trace server -m ./examples/`
