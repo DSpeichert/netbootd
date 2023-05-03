@@ -1,0 +1,123 @@
+---
+id: almalinux
+ipv4: 10.119.1.18/24
+hostname: almalinux
+domain: test.local
+leaseDuration: 1h
+
+# many values are possible because a single machine may have multiple interfaces
+# and it may not be known which one boots first
+mac:
+  - b4:05:5d:67:63:10
+  - B4:05:5D:67:63:0F
+
+# in the "order of preference"
+dns:
+  - 8.8.8.8
+
+# in the "order of preference"
+router:
+  - 10.119.1.254
+
+# in the "order of preference"
+ntp:
+  - 78.46.102.180
+
+ipxe: true
+bootFilename: /install.ipxe
+
+# fist of all you need mount your iso on /opt/pxe/iso/
+
+mounts:
+
+  - path: /iso
+    pathIsPrefix: true
+    localDir: /opt/pxe/iso/
+    appendSuffix: true
+
+  - path: /install.ipxe
+    content: |
+      #!ipxe
+      # https://ipxe.org/scripting
+
+      set base {{ .HttpBaseUrl }}/iso/isolinux
+
+      kernel ${base}/vmlinuz gfxpayload=800x600x16,800x600 ks={{ .HttpBaseUrl }}/ks.cfg repo={{ .HttpBaseUrl }}/iso
+      initrd ${base}/initrd.img
+      boot
+
+  # Note: this example is built for a BIOS (non-UEFI) machine
+  - path: /ks.cfg
+    content: |
+      graphical
+      url --url {{ .HttpBaseUrl }}/iso
+      network  --bootproto=dhcp --device=link --ipv6=auto --activate
+
+      lang zh_CN.UTF-8
+      keyboard us
+      timezone Asia/Shanghai
+
+      firewall --disabled
+      selinux --disabled
+
+      authconfig --enableshadow --passalgo=sha512
+      rootpw --plaintext Boncloud
+
+      skipx
+      ignoredisk --only-use=sda
+      clearpart --all --initlabel
+
+      part /boot --fstype="xfs" --ondisk=sda --size=1024
+      part /home --fstype="xfs" --ondisk=sda --size=10240
+      part / --fstype="xfs" --ondisk=sda --size=102400
+      part /opt --fstype="xfs" --ondisk=sda  --grow --size=1
+
+
+      firstboot --disabled
+      reboot
+
+      %packages
+      @^minimal-environment
+      tar
+      vim
+      lvm2
+      wget
+      ipvsadm
+      tcpdump
+      python3
+      bash-completion
+      %end
+
+      %post
+      cat > /etc/sysconfig/network-scripts/ifcfg-ens47f0 << EOF
+      NAME=ens47f0
+      DEVICE=ens47f0
+      TYPE=Ethernet
+      BOOTPROTO=none
+      ONBOOT=yes
+      MASTER=bond4
+      SLAVE=yes
+      EOF
+      cat > /etc/sysconfig/network-scripts/ifcfg-ens47f1 << EOF
+      NAME=ens47f1
+      DEVICE=ens47f1
+      TYPE=Ethernet
+      BOOTPROTO=none
+      ONBOOT=yes
+      MASTER=bond4
+      SLAVE=yes
+      EOF
+      cat > /etc/sysconfig/network-scripts/ifcfg-bond4 << EOF
+      DEVICE=bond4
+      NAME=bond4
+      TYPE=Bond
+      BONDING_MASTER=yes
+      IPADDR={{ .Manifest.IPv4.IP }}
+      GATEWAY={{ first .Manifest.Router }}
+      NETMASK={{ .Manifest.IPv4.Netmask }}
+      PEERDNS=no
+      ONBOOT=yes
+      BOOTPROTO=static
+      BONDING_OPTS="mode=802.3ad miimon=100 lacp_rate=fast arp_validate=0"
+      EOF
+      %end
