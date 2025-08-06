@@ -3,6 +3,8 @@ package httpd
 import (
 	"bytes"
 	_ "embed"
+	"errors"
+	"fmt"
 	"io"
 	"net"
 	"net/http"
@@ -10,6 +12,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"text/template"
 	"time"
@@ -23,9 +26,44 @@ type Handler struct {
 	server *Server
 }
 
+func parseIPFromHostPort(hostPort string) (net.IP, error) {
+	host, _, err := net.SplitHostPort(hostPort)
+	if err != nil {
+		return nil, err
+	}
+	ip := net.ParseIP(host)
+	if ip == nil {
+		return nil, fmt.Errorf("%s: unable to parse ip", host)
+	}
+	return ip, nil
+}
+
+func parseRemoteIP(r *http.Request) (net.IP, error) {
+	return parseIPFromHostPort(r.RemoteAddr)
+}
+
+func parseLocalIP(r *http.Request) (net.IP, error) {
+	lip, ok := r.Context().Value(http.LocalAddrContextKey).(net.Addr)
+	if !ok {
+		return nil, errors.New("local address not found in request context")
+	}
+	if lip == nil {
+		return nil, errors.New("nil local address")
+	}
+	return parseIPFromHostPort(lip.String())
+}
+
 func (h Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	ip, _, err := net.SplitHostPort(r.RemoteAddr)
-	raddr := net.ParseIP(ip)
+	raddr, err := parseRemoteIP(r)
+	if err != nil {
+		http.Error(w, "unable to determine remote address: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+	laddr, err := parseLocalIP(r)
+	if err != nil {
+		http.Error(w, "unable to determine local address: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
 
 	h.server.logger.Info().
 		Str("path", r.RequestURI).
@@ -95,10 +133,15 @@ func (h Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		buf := new(bytes.Buffer)
 
 		err = tmpl.Execute(buf, mfest.ContentContext{
+			LocalIP:  laddr,
 			RemoteIP: raddr,
 			HttpBaseUrl: &url.URL{
 				Scheme: "http",
 				Host:   r.Host,
+			},
+			ApiBaseUrl: &url.URL{
+				Scheme: "http",
+				Host:   net.JoinHostPort(laddr.String(), strconv.Itoa(h.server.store.GlobalHints.ApiPort)),
 			},
 			Manifest: manifest,
 		})
@@ -134,11 +177,11 @@ func (h Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	} else if mount.LocalDir != "" {
 		path := filepath.Join(mount.LocalDir, mount.Path)
-		
+
 		if mount.AppendSuffix {
 			path = filepath.Join(mount.LocalDir, strings.TrimPrefix(r.URL.Path, mount.Path))
 		}
-		
+
 		if !strings.HasPrefix(path, mount.LocalDir) {
 			h.server.logger.Error().
 				Err(err).
