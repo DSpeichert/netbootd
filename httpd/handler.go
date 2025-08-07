@@ -19,7 +19,7 @@ import (
 
 	mfest "github.com/DSpeichert/netbootd/manifest"
 	"github.com/DSpeichert/netbootd/static"
-	"github.com/Masterminds/sprig"
+	"github.com/Masterminds/sprig/v3"
 )
 
 type Handler struct {

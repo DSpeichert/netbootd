@@ -3,12 +3,13 @@
 package dhcpd
 
 import (
+	"net"
+
 	"github.com/DSpeichert/netbootd/store"
 	"github.com/insomniacslk/dhcp/dhcpv4/server4"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"golang.org/x/net/ipv4"
-	"net"
 )
 
 type Server struct {

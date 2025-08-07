@@ -33,7 +33,7 @@ and naturally NBP.
 
 ## TFTP and HTTP
 
-netbootd exposes all "mounts" via both TFTP and HTTP simultatenously.
+netbootd exposes all "mounts" via both TFTP and HTTP simultaneously.
 Naturally, it's not a good idea to transfer really large files over TFTP but PXE generally
 requires use of TFTP in most cases.
 

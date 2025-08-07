@@ -1,12 +1,13 @@
 package httpd
 
 import (
-	"github.com/DSpeichert/netbootd/store"
-	"github.com/rs/zerolog"
-	"github.com/rs/zerolog/log"
 	"net"
 	"net/http"
 	"time"
+
+	"github.com/DSpeichert/netbootd/store"
+	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
 )
 
 type Server struct {

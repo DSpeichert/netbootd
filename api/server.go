@@ -2,17 +2,18 @@ package api
 
 import (
 	"encoding/json"
+	"io/ioutil"
+	"net"
+	"net/http"
+	"strings"
+	"time"
+
 	"github.com/DSpeichert/netbootd/manifest"
 	"github.com/DSpeichert/netbootd/store"
 	"github.com/gorilla/mux"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"gopkg.in/yaml.v2"
-	"io/ioutil"
-	"net"
-	"net/http"
-	"strings"
-	"time"
 )
 
 type Server struct {

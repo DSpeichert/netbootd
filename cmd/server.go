@@ -11,7 +11,7 @@ import (
 	"github.com/DSpeichert/netbootd/httpd"
 	"github.com/DSpeichert/netbootd/store"
 	"github.com/DSpeichert/netbootd/tftpd"
-	systemd "github.com/coreos/go-systemd/daemon"
+	systemd "github.com/coreos/go-systemd/v22/daemon"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"

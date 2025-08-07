@@ -2,14 +2,15 @@ package store
 
 import (
 	"errors"
-	"github.com/DSpeichert/netbootd/manifest"
-	"github.com/rs/zerolog"
-	"github.com/rs/zerolog/log"
 	"net"
 	"os"
 	"path/filepath"
 	"strings"
 	"sync"
+
+	"github.com/DSpeichert/netbootd/manifest"
+	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
 )
 
 type Config struct {

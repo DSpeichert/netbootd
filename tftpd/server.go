@@ -1,12 +1,13 @@
 package tftpd
 
 import (
+	"net"
+	"net/http"
+
 	"github.com/DSpeichert/netbootd/store"
 	"github.com/pin/tftp"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
-	"net"
-	"net/http"
 )
 
 type Server struct {

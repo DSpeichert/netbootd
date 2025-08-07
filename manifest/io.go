@@ -3,8 +3,9 @@ package manifest
 import (
 	"encoding/json"
 	"fmt"
-	"gopkg.in/yaml.v2"
 	"path/filepath"
+
+	"gopkg.in/yaml.v2"
 )
 
 func ManifestFromJson(content []byte) (manifest Manifest, err error) {
