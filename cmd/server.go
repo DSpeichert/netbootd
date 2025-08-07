@@ -76,6 +76,7 @@ var serverCmd = &cobra.Command{
 			_ = store.LoadFromDirectory(viper.GetString("manifestPath"))
 		}
 		store.GlobalHints.HttpPort = viper.GetInt("http.port")
+		store.GlobalHints.ApiPort = viper.GetInt("api.port")
 
 		// DHCP
 		dhcpServer, err := dhcpd.NewServer(viper.GetString("address"), viper.GetString("interface"), store)

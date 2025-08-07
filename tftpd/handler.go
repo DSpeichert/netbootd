@@ -6,10 +6,12 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"net/url"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"text/template"
 
@@ -139,7 +141,11 @@ func (server *Server) tftpReadHandler(filename string, rf io.ReaderFrom) error {
 			RemoteIP: raddr.IP,
 			HttpBaseUrl: &url.URL{
 				Scheme: "http",
-				Host:   fmt.Sprintf("%s:%d", laddr.String(), server.store.GlobalHints.HttpPort),
+				Host:   net.JoinHostPort(laddr.String(), strconv.Itoa(server.store.GlobalHints.HttpPort)),
+			},
+			ApiBaseUrl: &url.URL{
+				Scheme: "http",
+				Host:   net.JoinHostPort(laddr.String(), strconv.Itoa(server.store.GlobalHints.ApiPort)),
 			},
 			Manifest: manifest,
 		})

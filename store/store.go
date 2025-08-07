@@ -36,6 +36,7 @@ type Store struct {
 	// sort of global config
 	GlobalHints struct {
 		HttpPort int
+		ApiPort  int
 	}
 }
 

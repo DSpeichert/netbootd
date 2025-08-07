@@ -103,6 +103,8 @@ type ContentContext struct {
 	RemoteIP net.IP
 	// Base URL to the HTTP service (IP and port) - not API
 	HttpBaseUrl *url.URL
+	// Base URL to the API service (IP and port)
+	ApiBaseUrl *url.URL
 	// Copy of Manifest
 	Manifest *Manifest
 }

@@ -124,7 +124,7 @@ mounts:
     appendSuffix: true
 
   - path: /install.ipxe
-    # The templating context provides access to: .LocalIP, .RemoteIP, .HttpBaseUrl and .Manifest.
+    # The templating context provides access to: .LocalIP, .RemoteIP, .HttpBaseUrl, .ApiBaseUrl and .Manifest.
     # Sprig functions are available: masterminds.github.io/sprig
     content: |
       #!ipxe
