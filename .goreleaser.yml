@@ -1,7 +1,11 @@
+---
+# yaml-language-server: $schema=https://goreleaser.com/static/schema.json
+# vim: set ts=2 sw=2 tw=0 fo=cnqoj
+version: 2
 project_name: netbootd
 before:
   hooks:
-    - go mod download
+    - go mod tidy
 builds:
   - binary: netbootd
     # Default is `-s -w -X main.version={{.Version}} -X main.commit={{.Commit}} -X main.date={{.Date}} -X main.builtBy=goreleaser`.
@@ -31,3 +35,14 @@ archives:
       - LICENSE*
       - netbootd.service
       - netbootd.yml
+
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - "^docs:"
+      - "^test:"
+
+release:
+
+report_sizes: true
