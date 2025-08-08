@@ -81,35 +81,35 @@ var serverCmd = &cobra.Command{
 		// DHCP
 		dhcpServer, err := dhcpd.NewServer(viper.GetString("address"), viper.GetString("interface"), store)
 		if err != nil {
-			log.Fatal().Err(err)
+			log.Fatal().Err(err).Msg("Failed to create DHCP server")
 		}
 		go dhcpServer.Serve()
 
 		// TFTP
 		tftpServer, err := tftpd.NewServer(store)
 		if err != nil {
-			log.Fatal().Err(err)
+			log.Fatal().Err(err).Msg("Failed to create TFTP server")
 		}
 		connTftp, err := net.ListenUDP("udp", &net.UDPAddr{
 			IP:   net.ParseIP(viper.GetString("address")),
 			Port: 69, // TFTP
 		})
 		if err != nil {
-			log.Fatal().Err(err)
+			log.Fatal().Err(err).Msg("Failed to bind TFTP server")
 		}
 		go tftpServer.Serve(connTftp)
 
 		// HTTP service
 		httpServer, err := httpd.NewServer(store)
 		if err != nil {
-			log.Fatal().Err(err)
+			log.Fatal().Err(err).Msg("Failed to create HTTP server")
 		}
 		connHttp, err := net.ListenTCP("tcp", &net.TCPAddr{
 			IP:   net.ParseIP(viper.GetString("address")),
 			Port: viper.GetInt("http.port"), // HTTP
 		})
 		if err != nil {
-			log.Fatal().Err(err)
+			log.Fatal().Err(err).Msg("Failed to bind HTTP API server")
 		}
 		go httpServer.Serve(connHttp)
 		log.Info().Interface("addr", connHttp.Addr()).Msg("HTTP listening")
@@ -117,14 +117,14 @@ var serverCmd = &cobra.Command{
 		// HTTP API service
 		apiServer, err := api.NewServer(store, viper.GetString("api.authorization"))
 		if err != nil {
-			log.Fatal().Err(err)
+			log.Fatal().Err(err).Msg("Failed to create HTTP API server")
 		}
 		connApi, err := net.ListenTCP("tcp", &net.TCPAddr{
 			IP:   net.ParseIP(viper.GetString("address")),
 			Port: viper.GetInt("api.port"), // HTTP
 		})
 		if err != nil {
-			log.Fatal().Err(err)
+			log.Fatal().Err(err).Msg("Failed to bind API server")
 		}
 		if viper.GetString("api.TLSCertificatePath") != "" && viper.GetString("api.TLSPrivateKeyPath") != "" {
 			log.Info().Interface("api", connApi.Addr()).Msg("HTTP API listening with TLS...")
