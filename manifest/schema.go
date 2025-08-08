@@ -27,6 +27,7 @@ type Manifest struct {
 	BootFilename  string `yaml:"bootFilename"`
 	Mounts        []Mount
 	Suspended     bool
+	Vars          map[string]interface{}
 }
 
 // Mount represents a path exposed via TFTP and HTTP.
