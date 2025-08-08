@@ -100,6 +100,11 @@ ipxe: true
 # which netbootd automatically points to be itself.
 # This should map to a "mount" below.
 bootFilename: install.ipxe
+# Arbitrary mapping of key/value pairs that can be substituted
+# in mount content templates below using {{ .Manifest.Vars.xxx }}
+vars:
+  gfxpayload: 800x600x16,800x600
+  auto: true
 
 # Mounts define virtual per-host (per-manifest) paths that are acessible
 # over both TFTP and HTTP but only from the IP address of in this manifest.
@@ -133,7 +138,7 @@ mounts:
       set base {{ .HttpBaseUrl }}/netboot
 
       {{ $hostnameParts := splitList "." .Manifest.Hostname }}
-      kernel ${base}/linux gfxpayload=800x600x16,800x600 initrd=initrd.gz auto=true url={{ .HttpBaseUrl.String }}/preseed.txt netcfg/get_ipaddress={{ .Manifest.IPv4.IP }} netcfg/get_netmask={{ .Manifest.IPv4.Netmask }} netcfg/get_gateway={{ first .Manifest.Router }} netcfg/get_nameservers="{{ .Manifest.DNS | join " " }}" netcfg/disable_autoconfig=true hostname={{ first $hostnameParts }} domain={{ rest $hostnameParts | join "." }} DEBCONF_DEBUG=developer
+      kernel ${base}/linux gfxpayload={{ .Manifest.Vars.gfxpayload }} initrd=initrd.gz auto={{ .Manifest.Vars.auto }} url={{ .HttpBaseUrl.String }}/preseed.txt netcfg/get_ipaddress={{ .Manifest.IPv4.IP }} netcfg/get_netmask={{ .Manifest.IPv4.Netmask }} netcfg/get_gateway={{ first .Manifest.Router }} netcfg/get_nameservers="{{ .Manifest.DNS | join " " }}" netcfg/disable_autoconfig=true hostname={{ first $hostnameParts }} domain={{ rest $hostnameParts | join "." }} DEBCONF_DEBUG=developer
       initrd ${base}/initrd.gz
       boot
 ```
