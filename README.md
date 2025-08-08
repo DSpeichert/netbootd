@@ -226,6 +226,8 @@ Flags:
 Global Flags:
   -d, --debug                    enable debug logging
       --disable-journal-logger   disable zerolog journald logger
+      --enable-json-logger       enable JSON logging
+      --no-color                 disable colored logging
       --trace                    enable trace logging
 ```
 
