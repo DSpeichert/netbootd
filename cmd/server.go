@@ -26,6 +26,7 @@ var (
 	apiTlsCert   string
 	apiTlsKey    string
 	manifestPath string
+	rootPath     string
 )
 
 func init() {
@@ -50,6 +51,9 @@ func init() {
 	serverCmd.Flags().StringVarP(&manifestPath, "manifests", "m", "", "load manifests from directory")
 	viper.BindPFlag("manifestPath", serverCmd.Flags().Lookup("manifests"))
 
+	serverCmd.Flags().StringVarP(&rootPath, "root", "", "", "if not given as an absolute path, a mount's path.localDir is relative to this directory")
+	viper.BindPFlag("rootPath", serverCmd.Flags().Lookup("root"))
+
 	rootCmd.AddCommand(serverCmd)
 }
 
@@ -73,7 +77,7 @@ var serverCmd = &cobra.Command{
 		})
 		if viper.GetString("manifestPath") != "" {
 			log.Info().Str("path", viper.GetString("manifestPath")).Msg("Loading manifests")
-			_ = store.LoadFromDirectory(viper.GetString("manifestPath"))
+			_ = store.LoadFromDirectory(viper.GetString("manifestPath"), viper.GetString("rootPath"))
 		}
 		store.GlobalHints.HttpPort = viper.GetInt("http.port")
 		store.GlobalHints.ApiPort = viper.GetInt("api.port")
@@ -86,7 +90,7 @@ var serverCmd = &cobra.Command{
 		go dhcpServer.Serve()
 
 		// TFTP
-		tftpServer, err := tftpd.NewServer(store)
+		tftpServer, err := tftpd.NewServer(store, viper.GetString("rootPath"))
 		if err != nil {
 			log.Fatal().Err(err).Msg("Failed to create TFTP server")
 		}
@@ -100,7 +104,7 @@ var serverCmd = &cobra.Command{
 		go tftpServer.Serve(connTftp)
 
 		// HTTP service
-		httpServer, err := httpd.NewServer(store)
+		httpServer, err := httpd.NewServer(store, viper.GetString("rootPath"))
 		if err != nil {
 			log.Fatal().Err(err).Msg("Failed to create HTTP server")
 		}
@@ -115,7 +119,7 @@ var serverCmd = &cobra.Command{
 		log.Info().Interface("addr", connHttp.Addr()).Msg("HTTP listening")
 
 		// HTTP API service
-		apiServer, err := api.NewServer(store, viper.GetString("api.authorization"))
+		apiServer, err := api.NewServer(store, viper.GetString("api.authorization"), viper.GetString("rootPath"))
 		if err != nil {
 			log.Fatal().Err(err).Msg("Failed to create HTTP API server")
 		}

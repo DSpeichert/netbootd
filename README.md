@@ -227,6 +227,7 @@ Flags:
   -p, --http-port int         HTTP port to listen on (default 8080)
   -i, --interface string      interface to listen on, e.g. eth0 (DHCP)
   -m, --manifests string      load manifests from directory
+      --root string           if not given as an absolute path, a mount's path.localDir is relative to this directory
 
 Global Flags:
   -d, --debug                    enable debug logging

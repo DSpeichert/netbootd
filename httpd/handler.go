@@ -11,7 +11,6 @@ import (
 	"net/http/httputil"
 	"net/url"
 	"os"
-	"path/filepath"
 	"strconv"
 	"strings"
 	"text/template"
@@ -176,13 +175,9 @@ func (h Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		rp.ServeHTTP(w, r)
 		return
 	} else if mount.LocalDir != "" {
-		path := filepath.Join(mount.LocalDir, mount.Path)
+		path := mount.HostPath(h.server.rootPath, r.URL.Path)
 
-		if mount.AppendSuffix {
-			path = filepath.Join(mount.LocalDir, strings.TrimPrefix(r.URL.Path, mount.Path))
-		}
-
-		if !strings.HasPrefix(path, mount.LocalDir) {
+		if !mount.ValidateHostPath(h.server.rootPath, path) {
 			h.server.logger.Error().
 				Err(err).
 				Msgf("Requested path is invalid: %q", path)

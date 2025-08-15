@@ -14,16 +14,18 @@ type Server struct {
 	httpClient *http.Client
 	tftpServer *tftp.Server
 
-	logger zerolog.Logger
-	store  *store.Store
+	logger   zerolog.Logger
+	store    *store.Store
+	rootPath string
 }
 
-func NewServer(store *store.Store) (server *Server, err error) {
+func NewServer(store *store.Store, rootPath string) (server *Server, err error) {
 
 	server = &Server{
 		httpClient: &http.Client{},
 		logger:     log.With().Str("service", "tftp").Logger(),
 		store:      store,
+		rootPath:   rootPath,
 	}
 
 	return server, nil

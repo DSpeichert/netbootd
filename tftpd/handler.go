@@ -10,7 +10,6 @@ import (
 	"net/http"
 	"net/url"
 	"os"
-	"path/filepath"
 	"strconv"
 	"strings"
 	"text/template"
@@ -172,13 +171,9 @@ func (server *Server) tftpReadHandler(filename string, rf io.ReaderFrom) error {
 			Int64("sent", n).
 			Msg("transfer finished")
 	} else if mount.LocalDir != "" {
-		path := filepath.Join(mount.LocalDir, mount.Path)
+		path := mount.HostPath(server.rootPath, filename)
 
-		if mount.AppendSuffix {
-			path = filepath.Join(mount.LocalDir, strings.TrimPrefix(filename, mount.Path))
-		}
-
-		if !strings.HasPrefix(path, mount.LocalDir) {
+		if !mount.ValidateHostPath(server.rootPath, path) {
 			err := fmt.Errorf("requested path is invalid")
 			server.logger.Error().
 				Err(err).
