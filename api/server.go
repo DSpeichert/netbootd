@@ -26,7 +26,7 @@ type Server struct {
 
 // NewServer set up HTTP API server instance
 // If authorization is passed, requires privileged operation callers to present Authorization header with this content.
-func NewServer(store *store.Store, authorization string) (server *Server, err error) {
+func NewServer(store *store.Store, authorization, rootPath string) (server *Server, err error) {
 	r := mux.NewRouter()
 
 	server = &Server{
@@ -119,13 +119,13 @@ func NewServer(store *store.Store, authorization string) (server *Server, err er
 		buf, _ := ioutil.ReadAll(r.Body)
 		var m manifest.Manifest
 		if r.Header.Get("Content-Type") == "application/json" {
-			err = json.Unmarshal(buf, &m)
+			m, err = manifest.ManifestFromJson(buf, rootPath)
 			if err != nil {
 				http.Error(w, err.Error(), http.StatusBadRequest)
 				return
 			}
 		} else {
-			m, err = manifest.ManifestFromYaml(buf)
+			m, err = manifest.ManifestFromYaml(buf, rootPath)
 			if err != nil {
 				http.Error(w, err.Error(), http.StatusBadRequest)
 				return

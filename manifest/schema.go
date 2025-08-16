@@ -5,6 +5,7 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"path/filepath"
 	"strings"
 	"time"
 )
@@ -52,7 +53,29 @@ type Mount struct {
 	// Provides a path on the host to find the files.
 	// So that LocalDir: /tftpboot path: /subdir and client requests: /subdir/file.x the path on the host
 	// becomes /tfptboot/file.x
+	// If LocalDir is not absolute, path is relative to rootPath passed into HostPath and ValidateHostPath.
+	// So that RootPath: /tftpboot, LocalDir: ./files, path: /subdir and client request: /subdir/file.x on the host
+	// becomes /tftpboot/files/file.x
 	LocalDir string `yaml:"localDir"`
+}
+
+func (m Mount) hostPathPrefix(rootPath string) string {
+	if filepath.IsAbs(m.LocalDir) {
+		return m.LocalDir
+	}
+	return filepath.Join(rootPath, m.LocalDir)
+}
+
+func (m Mount) HostPath(rootPath, requestPath string) string {
+	path := m.Path
+	if m.AppendSuffix {
+		path = strings.TrimPrefix(requestPath, m.Path)
+	}
+	return filepath.Join(m.hostPathPrefix(rootPath), path)
+}
+
+func (m Mount) ValidateHostPath(rootPath string, hostPath string) bool {
+	return strings.HasPrefix(hostPath, m.hostPathPrefix(rootPath))
 }
 
 func (m Mount) ProxyDirector() (func(req *http.Request), error) {

@@ -14,11 +14,12 @@ type Server struct {
 	httpClient *http.Client
 	httpServer *http.Server
 
-	logger zerolog.Logger
-	store  *store.Store
+	logger   zerolog.Logger
+	store    *store.Store
+	rootPath string
 }
 
-func NewServer(store *store.Store) (server *Server, err error) {
+func NewServer(store *store.Store, rootPath string) (server *Server, err error) {
 
 	server = &Server{
 		httpServer: &http.Server{
@@ -26,8 +27,9 @@ func NewServer(store *store.Store) (server *Server, err error) {
 			MaxHeaderBytes: 1 << 20,
 			IdleTimeout:    10 * time.Second,
 		},
-		logger: log.With().Str("service", "http").Logger(),
-		store:  store,
+		logger:   log.With().Str("service", "http").Logger(),
+		store:    store,
+		rootPath: rootPath,
 	}
 
 	server.httpServer.Handler = Handler{server: server}

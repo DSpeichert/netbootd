@@ -53,7 +53,7 @@ func NewStore(cfg Config) (*Store, error) {
 	return &store, nil
 }
 
-func (s *Store) LoadFromDirectory(path string) (err error) {
+func (s *Store) LoadFromDirectory(path, rootPath string) (err error) {
 	items, err := os.ReadDir(path)
 	for _, item := range items {
 		if !item.Type().IsRegular() ||
@@ -68,7 +68,7 @@ func (s *Store) LoadFromDirectory(path string) (err error) {
 				Msg("cannot open file")
 			continue
 		}
-		m, err := manifest.ManifestFromYaml(b)
+		m, err := manifest.ManifestFromYaml(b, rootPath)
 		if err != nil {
 			s.logger.Error().
 				Err(err).
