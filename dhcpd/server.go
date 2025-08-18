@@ -3,6 +3,7 @@
 package dhcpd
 
 import (
+	"fmt"
 	"net"
 
 	"github.com/DSpeichert/netbootd/store"
@@ -22,9 +23,17 @@ type Server struct {
 }
 
 func NewServer(addr, ifname string, store *store.Store) (server *Server, err error) {
+	var ip net.IP
+	// only parse addr if non-zero length
+	if addr != "" {
+		ip = net.ParseIP(addr)
+		if ip == nil {
+			return nil, fmt.Errorf("invalid ip: %s", addr)
+		}
+	}
 	server = &Server{
 		address: &net.UDPAddr{
-			IP:   net.ParseIP(addr),
+			IP:   ip,
 			Port: 67,
 			Zone: ifname,
 		},

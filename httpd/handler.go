@@ -73,6 +73,10 @@ func (h Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	spoofIPs, ok := r.URL.Query()["spoof"]
 	if ok && len(spoofIPs[0]) > 0 {
 		manifestRaddr = net.ParseIP(spoofIPs[0])
+		if manifestRaddr == nil {
+			http.Error(w, "unable to determine host address: invalid ip: "+spoofIPs[0], http.StatusBadRequest)
+			return
+		}
 	}
 
 	manifest := h.server.store.FindByIP(manifestRaddr)
