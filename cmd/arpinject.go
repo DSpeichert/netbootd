@@ -28,6 +28,9 @@ var arpInjectCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		config.InitZeroLog()
 		parsedIp := net.ParseIP(ip)
+		if parsedIp == nil {
+			log.Fatal().Msgf("invalid ip: %s", ip)
+		}
 		parsedMac, err := net.ParseMAC(mac)
 		if err != nil {
 			log.Error().

@@ -81,10 +81,14 @@ func NewServer(store *store.Store, authorization, rootPath string) (server *Serv
 		var b []byte
 		if strings.Contains(r.Header.Get("Accept"), "application/json") {
 			w.Header().Set("Content-Type", "applications/json")
-			b, _ = json.Marshal(m)
+			b, err = json.Marshal(m)
 		} else {
 			w.Header().Set("Content-Type", "text/yaml")
-			b, _ = yaml.Marshal(m)
+			b, err = yaml.Marshal(m)
+		}
+		if err != nil {
+			http.Error(w, "error marshalling manifest: "+err.Error(), http.StatusInternalServerError)
+			return
 		}
 		w.WriteHeader(http.StatusOK)
 		w.Write(b)
@@ -100,10 +104,14 @@ func NewServer(store *store.Store, authorization, rootPath string) (server *Serv
 		var b []byte
 		if strings.Contains(r.Header.Get("Accept"), "application/json") {
 			w.Header().Set("Content-Type", "applications/json")
-			b, _ = json.Marshal(store.GetAll())
+			b, err = json.Marshal(store.GetAll())
 		} else {
 			w.Header().Set("Content-Type", "text/yaml")
-			b, _ = yaml.Marshal(store.GetAll())
+			b, err = yaml.Marshal(store.GetAll())
+		}
+		if err != nil {
+			http.Error(w, "error marshalling manifests: "+err.Error(), http.StatusInternalServerError)
+			return
 		}
 		w.WriteHeader(http.StatusOK)
 		w.Write(b)
@@ -121,17 +129,21 @@ func NewServer(store *store.Store, authorization, rootPath string) (server *Serv
 		if r.Header.Get("Content-Type") == "application/json" {
 			m, err = manifest.ManifestFromJson(buf, rootPath)
 			if err != nil {
-				http.Error(w, err.Error(), http.StatusBadRequest)
+				http.Error(w, "error loading manifest from json: "+err.Error(), http.StatusBadRequest)
 				return
 			}
 		} else {
 			m, err = manifest.ManifestFromYaml(buf, rootPath)
 			if err != nil {
-				http.Error(w, err.Error(), http.StatusBadRequest)
+				http.Error(w, "error loading manifest from yaml: "+err.Error(), http.StatusBadRequest)
 				return
 			}
 		}
-		_ = store.PutManifest(m)
+		err = store.PutManifest(m)
+		if err != nil {
+			http.Error(w, "error storing manifest: "+err.Error(), http.StatusBadRequest)
+			return
+		}
 		w.WriteHeader(http.StatusCreated)
 	}).Methods("PUT")
 
@@ -150,16 +162,20 @@ func NewServer(store *store.Store, authorization, rootPath string) (server *Serv
 
 	// GET|POST /api/self/suspend-boot
 	r.HandleFunc("/api/self/suspend-boot", func(w http.ResponseWriter, r *http.Request) {
-		var ip net.IP
+		var ipStr string
 		if queryFirst(r, "spoof") != "" {
 			if authorization != r.Header.Get("Authorization") {
 				http.Error(w, "Forbidden", http.StatusForbidden)
 				return
 			}
-			ip = net.ParseIP(queryFirst(r, "spoof"))
+			ipStr = queryFirst(r, "spoof")
 		} else {
-			host, _, _ := net.SplitHostPort(r.RemoteAddr)
-			ip = net.ParseIP(host)
+			ipStr, _, _ = net.SplitHostPort(r.RemoteAddr)
+		}
+		ip := net.ParseIP(ipStr)
+		if ip == nil {
+			http.Error(w, "could not determine host's ip: invalid ip: "+ipStr, http.StatusInternalServerError)
+			return
 		}
 
 		m := server.store.FindByIP(ip)
@@ -174,16 +190,20 @@ func NewServer(store *store.Store, authorization, rootPath string) (server *Serv
 
 	// GET|POST /api/self/unsuspend-boot
 	r.HandleFunc("/api/self/unsuspend-boot", func(w http.ResponseWriter, r *http.Request) {
-		var ip net.IP
+		var ipStr string
 		if queryFirst(r, "spoof") != "" {
 			if authorization != r.Header.Get("Authorization") {
 				http.Error(w, "Forbidden", http.StatusForbidden)
 				return
 			}
-			ip = net.ParseIP(queryFirst(r, "spoof"))
+			ipStr = queryFirst(r, "spoof")
 		} else {
-			host, _, _ := net.SplitHostPort(r.RemoteAddr)
-			ip = net.ParseIP(host)
+			ipStr, _, _ = net.SplitHostPort(r.RemoteAddr)
+		}
+		ip := net.ParseIP(ipStr)
+		if ip == nil {
+			http.Error(w, "could not determine host's ip: invalid ip: "+ipStr, http.StatusInternalServerError)
+			return
 		}
 
 		m := server.store.FindByIP(ip)
@@ -198,16 +218,20 @@ func NewServer(store *store.Store, authorization, rootPath string) (server *Serv
 
 	// GET /api/self/manifest
 	r.HandleFunc("/api/self/manifest", func(w http.ResponseWriter, r *http.Request) {
-		var ip net.IP
+		var ipStr string
 		if queryFirst(r, "spoof") != "" {
 			if authorization != r.Header.Get("Authorization") {
 				http.Error(w, "Forbidden", http.StatusForbidden)
 				return
 			}
-			ip = net.ParseIP(queryFirst(r, "spoof"))
+			ipStr = queryFirst(r, "spoof")
 		} else {
-			host, _, _ := net.SplitHostPort(r.RemoteAddr)
-			ip = net.ParseIP(host)
+			ipStr, _, _ = net.SplitHostPort(r.RemoteAddr)
+		}
+		ip := net.ParseIP(ipStr)
+		if ip == nil {
+			http.Error(w, "could not determine host's ip: invalid ip: "+ipStr, http.StatusInternalServerError)
+			return
 		}
 
 		m := server.store.FindByIP(ip)
@@ -218,10 +242,14 @@ func NewServer(store *store.Store, authorization, rootPath string) (server *Serv
 		var b []byte
 		if strings.Contains(r.Header.Get("Accept"), "application/json") {
 			w.Header().Set("Content-Type", "applications/json")
-			b, _ = json.Marshal(store.GetAll())
+			b, err = json.Marshal(store.GetAll())
 		} else {
 			w.Header().Set("Content-Type", "text/yaml")
-			b, _ = yaml.Marshal(store.GetAll())
+			b, err = yaml.Marshal(store.GetAll())
+		}
+		if err != nil {
+			http.Error(w, "error marshalling manifest: "+err.Error(), http.StatusInternalServerError)
+			return
 		}
 		w.WriteHeader(http.StatusOK)
 		w.Write(b)

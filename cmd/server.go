@@ -77,7 +77,10 @@ var serverCmd = &cobra.Command{
 		})
 		if viper.GetString("manifestPath") != "" {
 			log.Info().Str("path", viper.GetString("manifestPath")).Msg("Loading manifests")
-			_ = store.LoadFromDirectory(viper.GetString("manifestPath"), viper.GetString("rootPath"))
+			err := store.LoadFromDirectory(viper.GetString("manifestPath"), viper.GetString("rootPath"))
+			if err != nil {
+				log.Fatal().Err(err).Msg("Failed to load manifests")
+			}
 		}
 		store.GlobalHints.HttpPort = viper.GetInt("http.port")
 		store.GlobalHints.ApiPort = viper.GetInt("api.port")
@@ -89,13 +92,23 @@ var serverCmd = &cobra.Command{
 		}
 		go dhcpServer.Serve()
 
+		var addressIP net.IP
+		addressIPStr := viper.GetString("address")
+		// only parse addressIPStr if non-zero length
+		if addressIPStr != "" {
+			addressIP = net.ParseIP(addressIPStr)
+			if addressIP == nil {
+				log.Fatal().Msgf("Invalid address: %s", addressIPStr)
+			}
+		}
+
 		// TFTP
 		tftpServer, err := tftpd.NewServer(store, viper.GetString("rootPath"))
 		if err != nil {
 			log.Fatal().Err(err).Msg("Failed to create TFTP server")
 		}
 		connTftp, err := net.ListenUDP("udp", &net.UDPAddr{
-			IP:   net.ParseIP(viper.GetString("address")),
+			IP:   addressIP,
 			Port: 69, // TFTP
 		})
 		if err != nil {
@@ -109,7 +122,7 @@ var serverCmd = &cobra.Command{
 			log.Fatal().Err(err).Msg("Failed to create HTTP server")
 		}
 		connHttp, err := net.ListenTCP("tcp", &net.TCPAddr{
-			IP:   net.ParseIP(viper.GetString("address")),
+			IP:   addressIP,
 			Port: viper.GetInt("http.port"), // HTTP
 		})
 		if err != nil {
@@ -124,7 +137,7 @@ var serverCmd = &cobra.Command{
 			log.Fatal().Err(err).Msg("Failed to create HTTP API server")
 		}
 		connApi, err := net.ListenTCP("tcp", &net.TCPAddr{
-			IP:   net.ParseIP(viper.GetString("address")),
+			IP:   addressIP,
 			Port: viper.GetInt("api.port"), // HTTP
 		})
 		if err != nil {
