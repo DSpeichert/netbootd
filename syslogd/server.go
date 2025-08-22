@@ -7,24 +7,21 @@ import (
 	"gopkg.in/mcuadros/go-syslog.v2"
 )
 
+var defaultAddr = "0.0.0.0:514"
+
 type Server struct {
 	syslogServer *syslog.Server
 
 	logger zerolog.Logger
 	store  *store.Store
-	addr   string
 	ch     syslog.LogPartsChannel
 }
 
-func NewServer(store *store.Store, addr string) (server *Server, err error) {
-	if addr == "" {
-		addr = "0.0.0.0:514"
-	}
+func NewServer(store *store.Store) (server *Server, err error) {
 	server = &Server{
 		syslogServer: syslog.NewServer(),
 		logger:       log.With().Str("service", "syslog").Logger(),
 		store:        store,
-		addr:         addr,
 		ch:           make(syslog.LogPartsChannel),
 	}
 
@@ -34,12 +31,22 @@ func NewServer(store *store.Store, addr string) (server *Server, err error) {
 	return server, nil
 }
 
-func (server *Server) Listen() error {
-	err := server.syslogServer.ListenUDP(server.addr)
+func (server *Server) ListenUDP(addr string) error {
+	if addr == "" {
+		addr = defaultAddr
+	}
+	err := server.syslogServer.ListenUDP(addr)
 	if err != nil {
 		return err
 	}
-	err = server.syslogServer.ListenTCP(server.addr)
+	return nil
+}
+
+func (server *Server) ListenTCP(addr string) error {
+	if addr == "" {
+		addr = defaultAddr
+	}
+	err := server.syslogServer.ListenTCP(addr)
 	if err != nil {
 		return err
 	}

@@ -138,14 +138,18 @@ var serverCmd = &cobra.Command{
 		log.Info().Interface("addr", connHttp.Addr()).Msg("HTTP listening")
 
 		// Syslog service
-		syslogAddr := net.JoinHostPort(addressIPStr, viper.GetString("syslog.port"))
-		syslogServer, err := syslogd.NewServer(store, syslogAddr)
+		syslogServer, err := syslogd.NewServer(store)
 		if err != nil {
 			log.Fatal().Err(err).Msg("Failed to create Syslog server")
 		}
-		err = syslogServer.Listen()
+		syslogAddr := net.JoinHostPort(addressIPStr, viper.GetString("syslog.port"))
+		err = syslogServer.ListenUDP(syslogAddr)
 		if err != nil {
-			log.Fatal().Err(err).Msg("Failed to bind Syslog server")
+			log.Fatal().Err(err).Msg("Failed to bind UDP Syslog server")
+		}
+		err = syslogServer.ListenTCP(syslogAddr)
+		if err != nil {
+			log.Fatal().Err(err).Msg("Failed to bind TCP Syslog server")
 		}
 		go syslogServer.Serve()
 		log.Info().Interface("syslog", syslogAddr).Msg("Syslog listening...")
