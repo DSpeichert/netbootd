@@ -17,6 +17,7 @@ require (
 	github.com/u-root/uio v0.0.0-20240224005618-d2acac8f3701
 	golang.org/x/net v0.42.0
 	golang.org/x/sys v0.34.0
+	gopkg.in/mcuadros/go-syslog.v2 v2.3.0
 	gopkg.in/yaml.v2 v2.4.0
 )
 

@@ -10,6 +10,7 @@ import (
 	"github.com/DSpeichert/netbootd/dhcpd"
 	"github.com/DSpeichert/netbootd/httpd"
 	"github.com/DSpeichert/netbootd/store"
+	"github.com/DSpeichert/netbootd/syslogd"
 	"github.com/DSpeichert/netbootd/tftpd"
 	systemd "github.com/coreos/go-systemd/v22/daemon"
 	"github.com/rs/zerolog"
@@ -22,6 +23,7 @@ var (
 	addr         string
 	ifname       string
 	httpPort     int
+	syslogPort   int
 	apiPort      int
 	apiTlsCert   string
 	apiTlsKey    string
@@ -35,6 +37,9 @@ func init() {
 
 	serverCmd.Flags().IntVarP(&httpPort, "http-port", "p", 8080, "HTTP port to listen on")
 	viper.BindPFlag("http.port", serverCmd.Flags().Lookup("http-port"))
+
+	serverCmd.Flags().IntVarP(&syslogPort, "syslog-port", "s", 514, "Syslog port to listen on")
+	viper.BindPFlag("syslog.port", serverCmd.Flags().Lookup("syslog-port"))
 
 	serverCmd.Flags().IntVarP(&apiPort, "api-port", "r", 8081, "HTTP API port to listen on")
 	viper.BindPFlag("api.port", serverCmd.Flags().Lookup("api-port"))
@@ -83,6 +88,7 @@ var serverCmd = &cobra.Command{
 			}
 		}
 		store.GlobalHints.HttpPort = viper.GetInt("http.port")
+		store.GlobalHints.SyslogPort = viper.GetInt("syslog.port")
 		store.GlobalHints.ApiPort = viper.GetInt("api.port")
 
 		// DHCP
@@ -130,6 +136,19 @@ var serverCmd = &cobra.Command{
 		}
 		go httpServer.Serve(connHttp)
 		log.Info().Interface("addr", connHttp.Addr()).Msg("HTTP listening")
+
+		// Syslog service
+		syslogAddr := net.JoinHostPort(addressIPStr, viper.GetString("syslog.port"))
+		syslogServer, err := syslogd.NewServer(store, syslogAddr)
+		if err != nil {
+			log.Fatal().Err(err).Msg("Failed to create Syslog server")
+		}
+		err = syslogServer.Listen()
+		if err != nil {
+			log.Fatal().Err(err).Msg("Failed to bind Syslog server")
+		}
+		go syslogServer.Serve()
+		log.Info().Interface("syslog", syslogAddr).Msg("Syslog listening...")
 
 		// HTTP API service
 		apiServer, err := api.NewServer(store, viper.GetString("api.authorization"), viper.GetString("rootPath"))

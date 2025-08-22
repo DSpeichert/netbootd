@@ -146,7 +146,8 @@ func (server *Server) tftpReadHandler(filename string, rf io.ReaderFrom) error {
 				Scheme: "http",
 				Host:   net.JoinHostPort(laddr.String(), strconv.Itoa(server.store.GlobalHints.ApiPort)),
 			},
-			Manifest: manifest,
+			SyslogHost: net.JoinHostPort(laddr.String(), strconv.Itoa(server.store.GlobalHints.SyslogPort)),
+			Manifest:   manifest,
 		})
 		if err != nil {
 			server.logger.Error().

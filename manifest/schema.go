@@ -129,6 +129,8 @@ type ContentContext struct {
 	HttpBaseUrl *url.URL
 	// Base URL to the API service (IP and port)
 	ApiBaseUrl *url.URL
+	// Host to Syslog service (IP and port)
+	SyslogHost string
 	// Copy of Manifest
 	Manifest *Manifest
 }
