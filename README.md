@@ -1,7 +1,7 @@
 # netbootd
 
 netbootd is a lightweight network boot server, designed for maximum flexibility
-and with "batteries included" approach in mind, serving as a DHCP, TFTP and HTTP server.
+and with "batteries included" approach in mind, serving as a DHCP, TFTP, Syslog and HTTP server.
 It includes a basic templating functionality, designed to allow generating e.g. preseed
 files for unattended OS installation.
 
@@ -46,6 +46,10 @@ itself
 netbootd can serve local files using the `path.localDir` configuration option.
 netbootd also contains a bundled version of [iPXE](https://ipxe.org/), which allows
 downloading (typically) kernel and initrd over HTTP instead of TFTP.
+
+## Syslog
+
+netbootd includes a syslog server to allow collecting and displaying a machine's logs during installation.
 
 ## Manifests
 
@@ -129,7 +133,7 @@ mounts:
     appendSuffix: true
 
   - path: /install.ipxe
-    # The templating context provides access to: .LocalIP, .RemoteIP, .HttpBaseUrl, .ApiBaseUrl and .Manifest.
+    # The templating context provides access to: .LocalIP, .RemoteIP, .HttpBaseUrl, .ApiBaseUrl, .SyslogHost and .Manifest.
     # Sprig functions are available: masterminds.github.io/sprig
     content: |
       #!ipxe
@@ -228,6 +232,7 @@ Flags:
   -i, --interface string      interface to listen on, e.g. eth0 (DHCP)
   -m, --manifests string      load manifests from directory
       --root string           if not given as an absolute path, a mount's path.localDir is relative to this directory
+  -s, --syslog-port int       Syslog port to listen on (default 514)
 
 Global Flags:
   -d, --debug                    enable debug logging

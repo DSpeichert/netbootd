@@ -146,7 +146,8 @@ func (h Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 				Scheme: "http",
 				Host:   net.JoinHostPort(laddr.String(), strconv.Itoa(h.server.store.GlobalHints.ApiPort)),
 			},
-			Manifest: manifest,
+			SyslogHost: net.JoinHostPort(laddr.String(), strconv.Itoa(h.server.store.GlobalHints.SyslogPort)),
+			Manifest:   manifest,
 		})
 		if err != nil {
 			h.server.logger.Error().
