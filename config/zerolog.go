@@ -4,6 +4,7 @@ import (
 	"io"
 	"os"
 
+	"github.com/coreos/go-systemd/v22/journal"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/journald"
 	"github.com/rs/zerolog/log"
@@ -30,14 +31,22 @@ func InitZeroLog() {
 		if !ZeroLogEnableJSONLogger {
 			output = zerolog.ConsoleWriter{Out: os.Stderr, NoColor: ZeroLogNoColor}
 		}
-		if ZeroLogJournalDDisabled {
+		journalErr, err := journal.StderrIsJournalStream()
+		if err != nil {
+			panic(err)
+		}
+		if ZeroLogJournalDDisabled || !journal.Enabled() {
 			log.Logger = log.Output(output)
 			log.Debug().Msg("Enabled console writer")
+		} else if journalErr {
+			journalWriter := journald.NewJournalDWriter()
+			log.Logger = log.Output(journalWriter)
+			log.Debug().Msg("Enabled journald writer")
 		} else {
 			journalWriter := journald.NewJournalDWriter()
 			multi := io.MultiWriter(output, journalWriter)
 			log.Logger = log.Output(multi)
-			log.Debug().Msg("Enabled journald writer")
+			log.Debug().Msg("Enabled console & journald writer")
 		}
 		zerologInitDone = true
 	}
