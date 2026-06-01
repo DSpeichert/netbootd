@@ -69,6 +69,10 @@ func (m Mount) hostPathPrefix(rootPath string) string {
 func (m Mount) HostPath(rootPath, requestPath string) string {
 	path := m.Path
 	if m.AppendSuffix {
+		if !strings.HasPrefix(requestPath, "/") {
+			requestPath = "/"+requestPath
+		}
+
 		path = strings.TrimPrefix(requestPath, m.Path)
 	}
 	return filepath.Join(m.hostPathPrefix(rootPath), path)
