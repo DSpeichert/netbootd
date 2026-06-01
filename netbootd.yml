@@ -30,4 +30,5 @@ http:
   port: 8080
 
 # Set to directory from which initial manifests will be loaded at startup
-#manifestPath: /etc/netbootd/manifests/
+# store:
+#   manifestPath: /etc/netbootd/manifests/

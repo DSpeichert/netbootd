@@ -31,6 +31,14 @@ func ManifestFromYaml(content []byte, rootPath string) (manifest Manifest, err e
 }
 
 func (m Manifest) Validate(rootPath string) error {
+	if m.ID == "" {
+		return fmt.Errorf("ID cannot be null")
+	}
+
+	if len(m.IPv4.IP) == 0 {
+		return fmt.Errorf("no IPv4 address provided")
+	}
+
 	for _, mount := range m.Mounts {
 		if mount.LocalDir != "" {
 			if !filepath.IsAbs(mount.LocalDir) && rootPath == "" {

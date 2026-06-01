@@ -1,7 +1,6 @@
 package store
 
 import (
-	"errors"
 	"net"
 	"os"
 	"path/filepath"
@@ -30,6 +29,9 @@ type Store struct {
 	// mapping Mac Address to Manifest
 	mac map[string]*manifest.Manifest
 
+	// mapping Manifest ID to store path
+	paths map[string]string
+
 	logger zerolog.Logger
 
 	mutex sync.RWMutex
@@ -48,6 +50,7 @@ func NewStore(cfg Config) (*Store, error) {
 		manifests: make(map[string]*manifest.Manifest),
 		ip:        make(map[string]*manifest.Manifest),
 		mac:       make(map[string]*manifest.Manifest),
+		paths: 	   make(map[string]string),
 		logger:    log.With().Str("module", "store").Logger(),
 	}
 
@@ -56,6 +59,13 @@ func NewStore(cfg Config) (*Store, error) {
 
 func (s *Store) LoadFromDirectory(path, rootPath string) (err error) {
 	items, err := os.ReadDir(path)
+	if err != nil {
+		return err
+	}
+
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+
 	for _, item := range items {
 		if !item.Type().IsRegular() ||
 			(!strings.HasSuffix(item.Name(), ".yml") && !strings.HasSuffix(item.Name(), ".yaml")) {
@@ -76,13 +86,16 @@ func (s *Store) LoadFromDirectory(path, rootPath string) (err error) {
 				Msg("cannot parse YAML manifest")
 			continue
 		}
-		err = s.PutManifest(m)
-		if err != nil {
-			s.logger.Error().
-				Err(err).
-				Msg("cannot add manifest to store")
-			continue
+
+		s.manifests[m.ID] = &m
+
+		s.ip[m.IPv4.IP.To16().String()] = &m
+
+		for _, mac := range m.MAC {
+			s.mac[mac.String()] = &m
 		}
+
+		s.paths[m.ID] = filepath.Join(path, item.Name())
 
 		if s.logger.Debug().Enabled() {
 			s.logger.Debug().
@@ -91,32 +104,21 @@ func (s *Store) LoadFromDirectory(path, rootPath string) (err error) {
 		}
 
 	}
-	return
+
+	return nil
 }
 
-func (s *Store) PutManifest(m manifest.Manifest) error {
-	if m.IPv4.IP == nil {
-		return errors.New("no IPv4 address provided")
-	}
-
-	if m.ID == "" {
-		return errors.New("ID cannot be null")
-	}
-
+func (s *Store) PutManifest(m *manifest.Manifest) error {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
-	s.manifests[m.ID] = &m
-	s.ip[string(m.IPv4.IP.To16())] = &m
+	s.manifests[m.ID] = m
+	s.ip[m.IPv4.IP.To16().String()] = m
 	for _, mac := range m.MAC {
-		s.mac[mac.String()] = &m
+		s.mac[mac.String()] = m
 	}
 
-	if s.config.PersistenceDirectory != "" {
-		return s.putPersistentManifest(m)
-	}
-
-	return nil
+	return s.putPersistentManifest(m)
 }
 
 func (s *Store) ForgetManifest(id string) error {
@@ -131,16 +133,12 @@ func (s *Store) ForgetManifest(id string) error {
 	defer s.mutex.Unlock()
 
 	delete(s.manifests, m.ID)
-	delete(s.ip, string(m.IPv4.IP.To16()))
+	delete(s.ip, m.IPv4.IP.To16().String())
 	for _, mac := range m.MAC {
 		delete(s.mac, mac.String())
 	}
 
-	if s.config.PersistenceDirectory != "" {
-		return s.forgetPersistentManifest(id)
-	}
-
-	return nil
+	return s.forgetPersistentManifest(id)
 }
 
 func (s *Store) Find(id string) *manifest.Manifest {
@@ -154,7 +152,7 @@ func (s *Store) FindByIP(ip net.IP) *manifest.Manifest {
 	s.mutex.RLock()
 	defer s.mutex.RUnlock()
 
-	return s.ip[string(ip.To16())]
+	return s.ip[ip.To16().String()]
 }
 
 func (s *Store) FindByMAC(mac net.HardwareAddr) *manifest.Manifest {

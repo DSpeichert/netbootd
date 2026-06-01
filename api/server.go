@@ -2,7 +2,7 @@ package api
 
 import (
 	"encoding/json"
-	"io/ioutil"
+	"io"
 	"net"
 	"net/http"
 	"strings"
@@ -124,7 +124,7 @@ func NewServer(store *store.Store, authorization, rootPath string) (server *Serv
 			return
 		}
 
-		buf, _ := ioutil.ReadAll(r.Body)
+		buf, _ := io.ReadAll(r.Body)
 		var m manifest.Manifest
 		if r.Header.Get("Content-Type") == "application/json" {
 			m, err = manifest.ManifestFromJson(buf, rootPath)
@@ -139,9 +139,10 @@ func NewServer(store *store.Store, authorization, rootPath string) (server *Serv
 				return
 			}
 		}
-		err = store.PutManifest(m)
+
+		err = store.PutManifest(&m)
 		if err != nil {
-			http.Error(w, "error storing manifest: "+err.Error(), http.StatusBadRequest)
+			http.Error(w, "error storing manifest: "+err.Error(), http.StatusInternalServerError)
 			return
 		}
 		w.WriteHeader(http.StatusCreated)
@@ -155,7 +156,10 @@ func NewServer(store *store.Store, authorization, rootPath string) (server *Serv
 		}
 
 		vars := mux.Vars(r)
-		store.ForgetManifest(vars["id"])
+		if err := store.ForgetManifest(vars["id"]); err != nil {
+			http.Error(w, "error forgetting manifest: "+err.Error(), http.StatusInternalServerError)
+			return
+		}
 
 		w.WriteHeader(http.StatusNoContent)
 	}).Methods("DELETE")

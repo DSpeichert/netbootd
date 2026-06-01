@@ -247,7 +247,7 @@ Run e.g. `./netbootd --trace server -m ./examples/`
 ## Roadmap / TODOs
 
 * [x] API TLS & Authentication
-* [ ] Manifest persistence (currently API-configured manifests live in memory only)
+* [x] Manifest persistence (currently API-configured manifests live in memory only)
 * [ ] Pluggable store backends (e.g. Redis, Etcd, files) for Manifests
 * [ ] Notifications (e.g. long-polling wait to return when a given host actually booted)
 * [ ] Per-manifest logs available over API

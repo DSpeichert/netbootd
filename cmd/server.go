@@ -1,6 +1,8 @@
 package cmd
 
 import (
+	"errors"
+	"io/fs"
 	"net"
 	"os"
 	"os/signal"
@@ -20,15 +22,16 @@ import (
 )
 
 var (
-	addr         string
-	ifname       string
-	httpPort     int
-	syslogPort   int
-	apiPort      int
-	apiTlsCert   string
-	apiTlsKey    string
-	manifestPath string
-	rootPath     string
+	addr         	string
+	ifname       	string
+	httpPort     	int
+	syslogPort   	int
+	apiPort      	int
+	apiTlsCert   	string
+	apiTlsKey    	string
+	manifestPath 	string
+	persistencePath string
+	rootPath     	string
 )
 
 func init() {
@@ -53,8 +56,11 @@ func init() {
 	serverCmd.Flags().StringVarP(&ifname, "interface", "i", "", "interface to listen on, e.g. eth0 (DHCP)")
 	viper.BindPFlag("interface", serverCmd.Flags().Lookup("interface"))
 
-	serverCmd.Flags().StringVarP(&manifestPath, "manifests", "m", "", "load manifests from directory")
-	viper.BindPFlag("manifestPath", serverCmd.Flags().Lookup("manifests"))
+	serverCmd.Flags().StringVarP(&manifestPath, "manifestPath", "m", "", "Load manifests from directory")
+	viper.BindPFlag("store.manifestPath", serverCmd.Flags().Lookup("manifestPath"))
+
+	serverCmd.Flags().StringVarP(&persistencePath, "persistencePath", "v", "", "Directory to persist HTTP API configured manifests")
+	viper.BindPFlag("store.persistencePath", serverCmd.Flags().Lookup("persistencePath"))
 
 	serverCmd.Flags().StringVarP(&rootPath, "root", "", "", "if not given as an absolute path, a mount's path.localDir is relative to this directory")
 	viper.BindPFlag("rootPath", serverCmd.Flags().Lookup("root"))
@@ -75,18 +81,27 @@ var serverCmd = &cobra.Command{
 			zerolog.SetGlobalLevel(zerolog.InfoLevel)
 		}
 
+		manifestPath := viper.GetString("store.manifestPath")
+		checkDirExists(manifestPath, false)
+
+		persistencePath := viper.GetString("store.persistencePath")
+		checkDirExists(persistencePath, true)
+
 		// set up store
-		store, _ := store.NewStore(store.Config{
-			// TODO: config
-			PersistenceDirectory: "",
+		store, err := store.NewStore(store.Config{
+			PersistenceDirectory: persistencePath,
 		})
-		if viper.GetString("manifestPath") != "" {
-			log.Info().Str("path", viper.GetString("manifestPath")).Msg("Loading manifests")
-			err := store.LoadFromDirectory(viper.GetString("manifestPath"), viper.GetString("rootPath"))
-			if err != nil {
-				log.Fatal().Err(err).Msg("Failed to load manifests")
-			}
+
+		if err != nil {
+			log.Fatal().Err(err).Msg("Failed to create store")
 		}
+
+		log.Info().Str("path", manifestPath).Msg("Loading manifests")
+		err = store.LoadFromDirectory(manifestPath, viper.GetString("rootPath"))
+		if err != nil {
+			log.Fatal().Err(err).Msg("Failed to load manifests")
+		}
+
 		store.GlobalHints.HttpPort = viper.GetInt("http.port")
 		store.GlobalHints.SyslogPort = viper.GetInt("syslog.port")
 		store.GlobalHints.ApiPort = viper.GetInt("api.port")
@@ -198,4 +213,24 @@ var serverCmd = &cobra.Command{
 		signal.Notify(sigs, os.Interrupt)
 		<-sigs
 	},
+}
+
+func checkDirExists(path string, fatal bool) {
+	info, err := os.Stat(path);
+	if err != nil {
+		if errors.Is(err, fs.ErrNotExist) {
+			log.Fatal().Err(err).Str("path", path).Msg("Path does not exist")
+		}
+
+		log.Fatal().Err(err).Str("path", path).Msg("Failed to stat path")
+	}
+
+	// make sure that path points to a directory, throw fatal if it does not
+	if !info.Mode().IsDir() {
+		if fatal {
+			log.Fatal().Err(err).Str("path", path).Msg("Path must be a directory")
+		} else {
+			log.Error().Err(err).Str("path", path).Msg("Path must be a directory")
+		}
+	}
 }
