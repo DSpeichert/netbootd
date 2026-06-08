@@ -11,7 +11,6 @@ import (
 	"net/url"
 	"os"
 	"strconv"
-	"strings"
 	"text/template"
 
 	mfest "github.com/DSpeichert/netbootd/manifest"
@@ -67,12 +66,19 @@ func (server *Server) tftpReadHandler(filename string, rf io.ReaderFrom) error {
 		Msg("found mount")
 
 	if mount.Proxy != "" {
-		url := mount.Proxy
+		proxyURL := mount.Proxy
 		if mount.AppendSuffix {
-			url = url + strings.TrimPrefix(filename, mount.Path)
+			var err error
+			proxyURL, err = url.JoinPath(proxyURL, mount.PathSuffix(filename))
+			if err != nil {
+				server.logger.Error().
+					Err(err).
+					Msg("failed to build proxy URL")
+				return err
+			}
 		}
 
-		req, err := http.NewRequest("GET", url, nil)
+		req, err := http.NewRequest("GET", proxyURL, nil)
 		if err != nil {
 			server.logger.Error().
 				Err(err).
@@ -93,7 +99,7 @@ func (server *Server) tftpReadHandler(filename string, rf io.ReaderFrom) error {
 
 		if resp.StatusCode == http.StatusNotFound {
 			server.logger.Error().
-				Str("url", url).
+				Str("url", proxyURL).
 				Str("status", resp.Status).
 				Str("path", filename).
 				Str("client", raddr.IP.String()).
@@ -120,7 +126,7 @@ func (server *Server) tftpReadHandler(filename string, rf io.ReaderFrom) error {
 		server.logger.Info().
 			Err(err).
 			Str("path", filename).
-			Str("url", url).
+			Str("url", proxyURL).
 			Str("client", raddr.IP.String()).
 			Int64("sent", n).
 			Msg("transfer finished")
@@ -140,13 +146,13 @@ func (server *Server) tftpReadHandler(filename string, rf io.ReaderFrom) error {
 			RemoteIP: raddr.IP,
 			HttpBaseUrl: &url.URL{
 				Scheme: "http",
-				Host:   net.JoinHostPort(laddr.String(), strconv.Itoa(server.store.GlobalHints.HttpPort)),
+				Host:   net.JoinHostPort(laddr.String(), strconv.Itoa(server.store.HTTPPort())),
 			},
 			ApiBaseUrl: &url.URL{
 				Scheme: "http",
-				Host:   net.JoinHostPort(laddr.String(), strconv.Itoa(server.store.GlobalHints.ApiPort)),
+				Host:   net.JoinHostPort(laddr.String(), strconv.Itoa(server.store.APIPort())),
 			},
-			SyslogHost: net.JoinHostPort(laddr.String(), strconv.Itoa(server.store.GlobalHints.SyslogPort)),
+			SyslogHost: net.JoinHostPort(laddr.String(), strconv.Itoa(server.store.SyslogPort())),
 			Manifest:   manifest,
 		})
 		if err != nil {

@@ -5,10 +5,32 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"path"
 	"path/filepath"
 	"strings"
 	"time"
 )
+
+// normalizePath strips leading and trailing slashes to produce a canonical
+// path for comparison. This ensures "/foo/bar", "foo/bar", and "foo/bar/"
+// are all treated identically.
+func normalizePath(p string) string {
+	return strings.Trim(p, "/")
+}
+
+// pathHasPrefix reports whether the normalized request path starts with the
+// normalized mount prefix at a path-segment boundary. An empty prefix matches
+// everything. This prevents "foo" from incorrectly matching "foobar".
+func pathHasPrefix(requestPath, prefix string) bool {
+	if prefix == "" {
+		return true
+	}
+	if requestPath == prefix {
+		return true
+	}
+	// The request must continue with a "/" after the prefix.
+	return strings.HasPrefix(requestPath, prefix+"/")
+}
 
 // Manifest represents user-supplied per-host manifest information.
 // go-yaml accepts completely lowercase version of keys but is not case-insensitive
@@ -67,15 +89,42 @@ func (m Mount) hostPathPrefix(rootPath string) string {
 }
 
 func (m Mount) HostPath(rootPath, requestPath string) string {
-	path := m.Path
+	suffix := m.Path
 	if m.AppendSuffix {
-		path = strings.TrimPrefix(requestPath, m.Path)
+		suffix = m.PathSuffix(requestPath)
 	}
-	return filepath.Join(m.hostPathPrefix(rootPath), path)
+	return filepath.Join(m.hostPathPrefix(rootPath), suffix)
 }
 
 func (m Mount) ValidateHostPath(rootPath string, hostPath string) bool {
 	return strings.HasPrefix(hostPath, m.hostPathPrefix(rootPath))
+}
+
+// PathSuffix extracts the portion of requestPath that extends beyond the
+// mount's Path. Both paths are normalized before comparison so that
+// leading/trailing slashes do not affect the result. The returned suffix
+// always starts with "/" (or is empty when the paths are equal).
+// PathSuffix enforces segment-boundary matching: mount "foo" will not match
+// request "foobar".
+func (m Mount) PathSuffix(requestPath string) string {
+	nReq := normalizePath(requestPath)
+	nMount := normalizePath(m.Path)
+	if nMount == "" {
+		if nReq == "" {
+			return ""
+		}
+		return "/" + nReq
+	}
+	if !pathHasPrefix(nReq, nMount) {
+		// no segment-boundary prefix match — return the full request as-is
+		return "/" + nReq
+	}
+	rest := strings.TrimPrefix(nReq, nMount)
+	if rest == "" {
+		return ""
+	}
+	// rest always starts with "/" because pathHasPrefix guarantees segment-boundary matching
+	return rest
 }
 
 func (m Mount) ProxyDirector() (func(req *http.Request), error) {
@@ -102,8 +151,12 @@ func (m Mount) ProxyDirector() (func(req *http.Request), error) {
 		}
 
 		if m.AppendSuffix {
-			req.URL.Path = target.Path + strings.TrimPrefix(req.URL.Path, m.Path)
-			req.URL.RawPath = target.RawPath + strings.TrimPrefix(req.URL.RawPath, m.Path)
+			suffix := m.PathSuffix(req.URL.Path)
+			req.URL.Path = path.Join(target.Path, suffix)
+			if req.URL.RawPath != "" {
+				rawSuffix := m.PathSuffix(req.URL.RawPath)
+				req.URL.RawPath = path.Join(target.RawPath, rawSuffix)
+			}
 		} else {
 			req.URL.Path = target.Path
 			req.URL.RawPath = target.RawPath
@@ -137,19 +190,23 @@ type ContentContext struct {
 
 // GetMount returns best matching Mount, respecting exact and prefix-based mount paths.
 // Longest path match is considered "best".
-// If the path in the Mount or being matched begins with a slash (/), it is ignored.
-func (m *Manifest) GetMount(path string) (Mount, error) {
-	path = strings.TrimLeft(path, "/")
+// Both the request path and mount paths are normalized (leading/trailing slashes
+// stripped) before comparison. Prefix matches are checked at path-segment
+// boundaries so that mount "foo" does not match request "foobar".
+func (m *Manifest) GetMount(reqPath string) (Mount, error) {
+	nPath := normalizePath(reqPath)
 	var bestMount Mount
+	var bestLen int
 	var found bool
 	for _, mount := range m.Mounts {
-		mountPath := strings.TrimLeft(mount.Path, "/")
-		if !mount.PathIsPrefix && mountPath == path {
+		nMountPath := normalizePath(mount.Path)
+		if !mount.PathIsPrefix && nMountPath == nPath {
 			return mount, nil
 		} else if mount.PathIsPrefix &&
-			(mountPath == "" || strings.HasPrefix(path, mountPath)) &&
-			(len(mount.Path) > len(bestMount.Path) || !found) {
+			pathHasPrefix(nPath, nMountPath) &&
+			(len(nMountPath) > bestLen || !found) {
 			bestMount = mount
+			bestLen = len(nMountPath)
 			found = true
 		}
 	}
@@ -157,5 +214,5 @@ func (m *Manifest) GetMount(path string) (Mount, error) {
 	if found {
 		return bestMount, nil
 	}
-	return bestMount, errors.New("no mount matches path: " + path)
+	return bestMount, errors.New("no mount matches path: " + reqPath)
 }
