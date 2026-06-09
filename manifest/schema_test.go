@@ -261,6 +261,57 @@ func TestProxyDirector_AppendSuffix(t *testing.T) {
 	}
 }
 
+func TestProxyDirector_Escaping(t *testing.T) {
+	tests := []struct {
+		name        string
+		mount       Mount
+		reqURL      string
+		wantEscaped string
+	}{
+		{
+			name:        "target has escaped path, request has no escaping",
+			mount:       Mount{Path: "/images", Proxy: "http://upstream/repo%2Fsub", PathIsPrefix: true, AppendSuffix: true},
+			reqURL:      "http://localhost/images/ubuntu/file.iso",
+			wantEscaped: "/repo%2Fsub/ubuntu/file.iso",
+		},
+		{
+			name:        "target has no escaping, request has escaped path",
+			mount:       Mount{Path: "/images", Proxy: "http://upstream/repo", PathIsPrefix: true, AppendSuffix: true},
+			reqURL:      "http://localhost/images/ubuntu%2Ffile.iso",
+			wantEscaped: "/repo/ubuntu%2Ffile.iso",
+		},
+		{
+			name:        "both target and request have escaped paths",
+			mount:       Mount{Path: "/images", Proxy: "http://upstream/repo%2Fsub", PathIsPrefix: true, AppendSuffix: true},
+			reqURL:      "http://localhost/images/ubuntu%2Ffile.iso",
+			wantEscaped: "/repo%2Fsub/ubuntu%2Ffile.iso",
+		},
+		{
+			name:        "neither has escaping",
+			mount:       Mount{Path: "/images", Proxy: "http://upstream/repo", PathIsPrefix: true, AppendSuffix: true},
+			reqURL:      "http://localhost/images/ubuntu/file.iso",
+			wantEscaped: "/repo/ubuntu/file.iso",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			director, err := tt.mount.ProxyDirector()
+			if err != nil {
+				t.Fatalf("ProxyDirector() error: %v", err)
+			}
+			req, err := http.NewRequest("GET", tt.reqURL, nil)
+			if err != nil {
+				t.Fatalf("NewRequest() error: %v", err)
+			}
+			director(req)
+			got := req.URL.EscapedPath()
+			if got != tt.wantEscaped {
+				t.Errorf("after director, URL.EscapedPath() = %q, want %q", got, tt.wantEscaped)
+			}
+		})
+	}
+}
+
 func TestGetMount_SlashVariations(t *testing.T) {
 	// Ensure all slash variations of the same mount path and request path match correctly.
 	pathVariations := []string{"/ubuntu", "ubuntu", "ubuntu/", "/ubuntu/"}

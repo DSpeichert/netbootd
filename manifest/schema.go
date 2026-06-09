@@ -93,7 +93,7 @@ func (m Mount) HostPath(rootPath, requestPath string) string {
 	if m.AppendSuffix {
 		suffix = m.PathSuffix(requestPath)
 	}
-	return filepath.Join(m.hostPathPrefix(rootPath), suffix)
+	return filepath.Join(m.hostPathPrefix(rootPath), strings.TrimLeft(suffix, "/"))
 }
 
 func (m Mount) ValidateHostPath(rootPath string, hostPath string) bool {
@@ -151,11 +151,25 @@ func (m Mount) ProxyDirector() (func(req *http.Request), error) {
 		}
 
 		if m.AppendSuffix {
-			suffix := m.PathSuffix(req.URL.Path)
+			origPath := req.URL.Path
+			origRaw := req.URL.RawPath
+			if origRaw == "" {
+				origRaw = origPath
+			}
+
+			suffix := m.PathSuffix(origPath)
 			req.URL.Path = path.Join(target.Path, suffix)
-			if req.URL.RawPath != "" {
-				rawSuffix := m.PathSuffix(req.URL.RawPath)
-				req.URL.RawPath = path.Join(target.RawPath, rawSuffix)
+
+			targetRaw := target.RawPath
+			if targetRaw == "" {
+				targetRaw = target.Path
+			}
+
+			if target.RawPath != "" || req.URL.RawPath != "" {
+				rawSuffix := m.PathSuffix(origRaw)
+				req.URL.RawPath = path.Join(targetRaw, rawSuffix)
+			} else {
+				req.URL.RawPath = ""
 			}
 		} else {
 			req.URL.Path = target.Path
