@@ -181,40 +181,40 @@ func TestPathSuffix(t *testing.T) {
 
 func TestHostPath(t *testing.T) {
 	tests := []struct {
-		name         string
-		mount        Mount
-		rootPath     string
-		requestPath  string
-		wantContains string
+		name        string
+		mount       Mount
+		rootPath    string
+		requestPath string
+		want        string
 	}{
 		{
-			name:         "append suffix with slash mismatch",
-			mount:        Mount{Path: "/subdir", AppendSuffix: true, LocalDir: "/tftpboot"},
-			rootPath:     "/root",
-			requestPath:  "/subdir/file.x",
-			wantContains: "/tftpboot/file.x",
+			name:        "append suffix with slash mismatch",
+			mount:       Mount{Path: "/subdir", AppendSuffix: true, LocalDir: "/tftpboot"},
+			rootPath:    "/root",
+			requestPath: "/subdir/file.x",
+			want:        "/tftpboot/file.x",
 		},
 		{
-			name:         "append suffix without leading slash",
-			mount:        Mount{Path: "subdir", AppendSuffix: true, LocalDir: "/tftpboot"},
-			rootPath:     "/root",
-			requestPath:  "/subdir/file.x",
-			wantContains: "/tftpboot/file.x",
+			name:        "append suffix without leading slash",
+			mount:       Mount{Path: "subdir", AppendSuffix: true, LocalDir: "/tftpboot"},
+			rootPath:    "/root",
+			requestPath: "/subdir/file.x",
+			want:        "/tftpboot/file.x",
 		},
 		{
-			name:         "no append suffix",
-			mount:        Mount{Path: "/subdir", AppendSuffix: false, LocalDir: "/tftpboot"},
-			rootPath:     "/root",
-			requestPath:  "/subdir/file.x",
-			wantContains: "/tftpboot/subdir",
+			name:        "no append suffix",
+			mount:       Mount{Path: "/subdir", AppendSuffix: false, LocalDir: "/tftpboot"},
+			rootPath:    "/root",
+			requestPath: "/subdir/file.x",
+			want:        "/tftpboot/subdir",
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got := tt.mount.HostPath(tt.rootPath, tt.requestPath)
-			if got != tt.wantContains {
+			if got != tt.want {
 				t.Errorf("HostPath(%q, %q) = %q, want %q",
-					tt.rootPath, tt.requestPath, got, tt.wantContains)
+					tt.rootPath, tt.requestPath, got, tt.want)
 			}
 		})
 	}

@@ -97,7 +97,16 @@ func (m Mount) HostPath(rootPath, requestPath string) string {
 }
 
 func (m Mount) ValidateHostPath(rootPath string, hostPath string) bool {
-	return strings.HasPrefix(hostPath, m.hostPathPrefix(rootPath))
+	base := filepath.Clean(m.hostPathPrefix(rootPath))
+	target := filepath.Clean(hostPath)
+	rel, err := filepath.Rel(base, target)
+	if err != nil {
+		return false
+	}
+	if rel == ".." || strings.HasPrefix(filepath.ToSlash(rel), "../") {
+		return false
+	}
+	return true
 }
 
 // PathSuffix extracts the portion of requestPath that extends beyond the
