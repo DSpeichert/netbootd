@@ -70,16 +70,22 @@ func (server *Server) tftpReadHandler(filename string, rf io.ReaderFrom) error {
 		if mount.AppendSuffix {
 			suffix, ok := mount.PathSuffix(filename)
 			if !ok {
+				server.logger.Warn().
+					Str("path", filename).
+					Interface("mount", mount).
+					Msg("PathSuffix could not match a mount already selected by GetMount")
 				suffix = ""
 			}
 
-			var err error
-			proxyURL, err = url.JoinPath(proxyURL, mfest.EscapePathSuffix(suffix))
-			if err != nil {
-				server.logger.Error().
-					Err(err).
-					Msg("failed to build proxy URL")
-				return err
+			if suffix != "" {
+				var err error
+				proxyURL, err = url.JoinPath(proxyURL, mfest.EscapePathSuffix(suffix))
+				if err != nil {
+					server.logger.Error().
+						Err(err).
+						Msg("failed to build proxy URL")
+					return err
+				}
 			}
 		}
 

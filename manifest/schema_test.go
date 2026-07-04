@@ -257,6 +257,33 @@ func TestHostPath(t *testing.T) {
 	}
 }
 
+func TestValidateHostPath(t *testing.T) {
+	mount := Mount{Path: "/subdir", AppendSuffix: true, LocalDir: "/tftpboot"}
+	rootPath := "/root"
+
+	tests := []struct {
+		name     string
+		hostPath string
+		want     bool
+	}{
+		{"file within base", "/tftpboot/file.x", true},
+		{"nested file within base", "/tftpboot/sub/file.x", true},
+		{"base itself", "/tftpboot", true},
+		{"traversal out of base", "/tftpboot/../file.x", false},
+		{"traversal out of base via constructed path", "/tftpboot/../etc/passwd", false},
+		{"sibling directory sharing prefix", "/tftpboot2/file.x", false},
+		{"unrelated absolute path", "/etc/passwd", false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := mount.ValidateHostPath(rootPath, tt.hostPath)
+			if got != tt.want {
+				t.Errorf("ValidateHostPath(%q, %q) = %v, want %v", rootPath, tt.hostPath, got, tt.want)
+			}
+		})
+	}
+}
+
 func TestProxyDirector_AppendSuffix(t *testing.T) {
 	tests := []struct {
 		name     string
