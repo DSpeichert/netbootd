@@ -68,8 +68,13 @@ func (server *Server) tftpReadHandler(filename string, rf io.ReaderFrom) error {
 	if mount.Proxy != "" {
 		proxyURL := mount.Proxy
 		if mount.AppendSuffix {
+			suffix, ok := mount.PathSuffix(filename)
+			if !ok {
+				suffix = ""
+			}
+
 			var err error
-			proxyURL, err = url.JoinPath(proxyURL, mount.PathSuffix(filename))
+			proxyURL, err = url.JoinPath(proxyURL, mfest.EscapePathSuffix(suffix))
 			if err != nil {
 				server.logger.Error().
 					Err(err).

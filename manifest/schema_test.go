@@ -2,30 +2,38 @@ package manifest
 
 import (
 	"net/http"
+	"net/url"
+	"strings"
 	"testing"
 )
 
-func TestNormalizePath(t *testing.T) {
+func TestCleanPath(t *testing.T) {
 	tests := []struct {
-		name string
-		in   string
-		want string
+		name         string
+		in           string
+		want         string
+		wantTrailing bool
 	}{
-		{"empty", "", ""},
-		{"slash only", "/", ""},
-		{"trailing slash", "foo/", "foo"},
-		{"leading slash", "/foo", "foo"},
-		{"both slashes", "/foo/", "foo"},
-		{"multiple leading", "///foo", "foo"},
-		{"nested", "/foo/bar/baz", "foo/bar/baz"},
-		{"nested trailing", "/foo/bar/", "foo/bar"},
-		{"no slashes", "foo/bar", "foo/bar"},
+		{"empty", "", "", false},
+		{"slash only", "/", "", false},
+		{"trailing slash", "foo/", "foo", true},
+		{"leading slash", "/foo", "foo", false},
+		{"both slashes", "/foo/", "foo", true},
+		{"multiple leading", "///foo", "foo", false},
+		{"nested", "/foo/bar/baz", "foo/bar/baz", false},
+		{"nested trailing", "/foo/bar/", "foo/bar", true},
+		{"no slashes", "foo/bar", "foo/bar", false},
+		{"interior double slash", "/foo//bar", "foo/bar", false},
+		{"dot segment", "/foo/./bar", "foo/bar", false},
+		{"dot-dot climbs to root", "/foo/../bar", "bar", false},
+		{"dot-dot cannot escape root", "/../../secret", "secret", false},
+		{"dot-dot with trailing slash", "/foo/../bar/", "bar", true},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := normalizePath(tt.in)
-			if got != tt.want {
-				t.Errorf("normalizePath(%q) = %q, want %q", tt.in, got, tt.want)
+			got, gotTrailing := cleanPath(tt.in)
+			if got != tt.want || gotTrailing != tt.wantTrailing {
+				t.Errorf("cleanPath(%q) = (%q, %v), want (%q, %v)", tt.in, got, gotTrailing, tt.want, tt.wantTrailing)
 			}
 		})
 	}
@@ -154,26 +162,55 @@ func TestPathSuffix(t *testing.T) {
 		mountPath string
 		reqPath   string
 		want      string
+		wantOK    bool
 	}{
-		{"exact match", "/foo", "/foo", ""},
-		{"exact match no slashes", "foo", "foo", ""},
-		{"suffix extraction", "/foo", "/foo/bar", "/bar"},
-		{"mismatched leading slashes", "foo", "/foo/bar", "/bar"},
-		{"mount with slash request without", "/foo", "foo/bar/baz", "/bar/baz"},
-		{"trailing slash on mount", "foo/", "/foo/bar", "/bar"},
-		{"empty mount", "", "/foo/bar", "/foo/bar"},
-		{"empty mount empty request", "", "", ""},
-		{"deep suffix", "/a/b", "/a/b/c/d/e", "/c/d/e"},
-		{"partial segment no match", "foo", "foobar", "/foobar"},
-		{"partial segment nested no match", "foo/bar", "foo/barbaz", "/foo/barbaz"},
+		{"exact match", "/foo", "/foo", "", true},
+		{"exact match no slashes", "foo", "foo", "", true},
+		{"suffix extraction", "/foo", "/foo/bar", "/bar", true},
+		{"mismatched leading slashes", "foo", "/foo/bar", "/bar", true},
+		{"mount with slash request without", "/foo", "foo/bar/baz", "/bar/baz", true},
+		{"trailing slash on mount", "foo/", "/foo/bar", "/bar", true},
+		{"empty mount", "", "/foo/bar", "/foo/bar", true},
+		{"empty mount empty request", "", "", "", true},
+		{"deep suffix", "/a/b", "/a/b/c/d/e", "/c/d/e", true},
+		{"partial segment no match", "foo", "foobar", "", false},
+		{"partial segment nested no match", "foo/bar", "foo/barbaz", "", false},
+		{"trailing slash preserved", "/foo", "/foo/bar/", "/bar/", true},
+		{"trailing slash preserved at mount root", "/foo", "/foo/", "/", true},
+		{"dot-dot cannot escape mount", "/foo", "/foo/../../secret", "", false},
+		{"dot-dot within mount resolves", "/foo", "/foo/bar/../baz", "/baz", true},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			m := Mount{Path: tt.mountPath}
-			got := m.PathSuffix(tt.reqPath)
+			got, ok := m.PathSuffix(tt.reqPath)
+			if got != tt.want || ok != tt.wantOK {
+				t.Errorf("Mount{Path: %q}.PathSuffix(%q) = (%q, %v), want (%q, %v)",
+					tt.mountPath, tt.reqPath, got, ok, tt.want, tt.wantOK)
+			}
+		})
+	}
+}
+
+func TestEscapePathSuffix(t *testing.T) {
+	tests := []struct {
+		name string
+		in   string
+		want string
+	}{
+		{"empty", "", ""},
+		{"simple", "/bar", "/bar"},
+		{"trailing slash", "/bar/", "/bar/"},
+		{"root trailing slash", "/", "/"},
+		{"space needs escaping", "/a b", "/a%20b"},
+		{"literal percent is escaped, not misread", "/100%off", "/100%25off"},
+		{"literal slash-looking escape stays literal", "/a%2Fb", "/a%252Fb"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := EscapePathSuffix(tt.in)
 			if got != tt.want {
-				t.Errorf("Mount{Path: %q}.PathSuffix(%q) = %q, want %q",
-					tt.mountPath, tt.reqPath, got, tt.want)
+				t.Errorf("EscapePathSuffix(%q) = %q, want %q", tt.in, got, tt.want)
 			}
 		})
 	}
@@ -275,16 +312,22 @@ func TestProxyDirector_Escaping(t *testing.T) {
 			wantEscaped: "/repo%2Fsub/ubuntu/file.iso",
 		},
 		{
+			// Matching and suffix extraction operate on the decoded request
+			// path (same as GetMount), so a %2F in the request is treated as
+			// a literal path separator rather than round-tripped verbatim.
+			// This trades exact-byte preservation for a suffix that can
+			// never desync Path from RawPath (see the RawPath-consistency
+			// tests below).
 			name:        "target has no escaping, request has escaped path",
 			mount:       Mount{Path: "/images", Proxy: "http://upstream/repo", PathIsPrefix: true, AppendSuffix: true},
 			reqURL:      "http://localhost/images/ubuntu%2Ffile.iso",
-			wantEscaped: "/repo/ubuntu%2Ffile.iso",
+			wantEscaped: "/repo/ubuntu/file.iso",
 		},
 		{
 			name:        "both target and request have escaped paths",
 			mount:       Mount{Path: "/images", Proxy: "http://upstream/repo%2Fsub", PathIsPrefix: true, AppendSuffix: true},
 			reqURL:      "http://localhost/images/ubuntu%2Ffile.iso",
-			wantEscaped: "/repo%2Fsub/ubuntu%2Ffile.iso",
+			wantEscaped: "/repo%2Fsub/ubuntu/file.iso",
 		},
 		{
 			name:        "neither has escaping",
@@ -309,6 +352,108 @@ func TestProxyDirector_Escaping(t *testing.T) {
 				t.Errorf("after director, URL.EscapedPath() = %q, want %q", got, tt.wantEscaped)
 			}
 		})
+	}
+}
+
+func TestProxyDirector_TrailingSlashPreserved(t *testing.T) {
+	// A directory-style request (trailing slash) must proxy to a
+	// directory-style upstream URL, not have the slash silently dropped.
+	mount := Mount{Path: "/", PathIsPrefix: true, AppendSuffix: true,
+		Proxy: "http://upstream/dists/focal/netboot/amd64/"}
+	director, err := mount.ProxyDirector()
+	if err != nil {
+		t.Fatalf("ProxyDirector() error: %v", err)
+	}
+
+	tests := []struct {
+		reqPath  string
+		wantPath string
+	}{
+		{"/", "/dists/focal/netboot/amd64/"},
+		{"/subdir/", "/dists/focal/netboot/amd64/subdir/"},
+		{"/subdir", "/dists/focal/netboot/amd64/subdir"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.reqPath, func(t *testing.T) {
+			req, _ := http.NewRequest("GET", "http://localhost"+tt.reqPath, nil)
+			director(req)
+			if req.URL.Path != tt.wantPath {
+				t.Errorf("director(%q): Path = %q, want %q", tt.reqPath, req.URL.Path, tt.wantPath)
+			}
+		})
+	}
+}
+
+func TestProxyDirector_DotDotCannotEscapeTarget(t *testing.T) {
+	mount := Mount{Path: "/images", PathIsPrefix: true, AppendSuffix: true,
+		Proxy: "http://upstream/repo/"}
+	director, err := mount.ProxyDirector()
+	if err != nil {
+		t.Fatalf("ProxyDirector() error: %v", err)
+	}
+	req, _ := http.NewRequest("GET", "http://localhost/images/../../secret", nil)
+	director(req)
+	if !strings.HasPrefix(req.URL.Path, "/repo/") {
+		t.Errorf("dot-dot request escaped proxy base: Path = %q", req.URL.Path)
+	}
+}
+
+func TestProxyDirector_RawPathAlwaysConsistent(t *testing.T) {
+	// Path and RawPath must always describe the same resource, or the
+	// server silently sends whichever one it recomputes rather than what
+	// was configured/requested.
+	mount := Mount{Path: "/images", PathIsPrefix: true, AppendSuffix: true,
+		Proxy: "http://upstream/repo%2Fsub"}
+	director, err := mount.ProxyDirector()
+	if err != nil {
+		t.Fatalf("ProxyDirector() error: %v", err)
+	}
+
+	// Unlike TFTP filenames, a malformed percent-escape (e.g. "100%off")
+	// never reaches the director for HTTP requests: net/http rejects it
+	// while parsing the request line, before routing. That case is covered
+	// for TFTP by TestTftpProxySuffix_InvalidEscapeIsSafe instead.
+	reqPaths := []string{
+		"/images/a b/file.iso",
+		"/images/ubuntu%2Ffile.iso/x",
+		"/images/../top",
+	}
+	for _, p := range reqPaths {
+		t.Run(p, func(t *testing.T) {
+			req, err := http.NewRequest("GET", "http://localhost"+p, nil)
+			if err != nil {
+				t.Fatalf("NewRequest() error: %v", err)
+			}
+			director(req)
+			if req.URL.RawPath != "" {
+				unescaped, err := url.PathUnescape(req.URL.RawPath)
+				if err != nil {
+					t.Fatalf("RawPath %q is not validly escaped: %v", req.URL.RawPath, err)
+				}
+				if unescaped != req.URL.Path {
+					t.Errorf("RawPath %q does not decode to Path %q (decoded to %q)",
+						req.URL.RawPath, req.URL.Path, unescaped)
+				}
+			}
+		})
+	}
+}
+
+func TestTftpProxySuffix_InvalidEscapeIsSafe(t *testing.T) {
+	// A TFTP filename containing a literal '%' that isn't a valid escape
+	// must not be silently dropped by url.JoinPath.
+	mount := Mount{Path: "/images", PathIsPrefix: true, AppendSuffix: true}
+	suffix, ok := mount.PathSuffix("images/100%off/file")
+	if !ok {
+		t.Fatalf("PathSuffix() ok = false, want true")
+	}
+	got, err := url.JoinPath("http://upstream/repo", EscapePathSuffix(suffix))
+	if err != nil {
+		t.Fatalf("JoinPath() error: %v", err)
+	}
+	want := "http://upstream/repo/100%25off/file"
+	if got != want {
+		t.Errorf("JoinPath() = %q, want %q", got, want)
 	}
 }
 
