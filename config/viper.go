@@ -16,7 +16,9 @@ func InitConfig() {
 	viper.AddConfigPath("$HOME/.config/netbootd/")
 	viper.AddConfigPath(".")
 
-	viper.SetDefault("store.path", "/var/lib/netbootd")
+	viper.SetDefault("store.backend", "memory")
+	viper.SetDefault("store.diskPath", "/var/lib/netbootd/manifests/")
+	viper.SetDefault("store.sqlitePath", "/var/lib/netbootd/manifests.sqlite3")
 
 	viper.SetEnvPrefix("netbootd")
 	viper.AutomaticEnv()

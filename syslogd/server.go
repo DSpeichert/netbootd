@@ -13,11 +13,11 @@ type Server struct {
 	syslogServer *syslog.Server
 
 	logger zerolog.Logger
-	store  *store.Store
+	store  store.Store
 	ch     syslog.LogPartsChannel
 }
 
-func NewServer(store *store.Store) (server *Server, err error) {
+func NewServer(store store.Store) (server *Server, err error) {
 	server = &Server{
 		syslogServer: syslog.NewServer(),
 		logger:       log.With().Str("service", "syslog").Logger(),

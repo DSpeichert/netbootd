@@ -4,6 +4,7 @@ import (
 	"net"
 	"net/http"
 
+	"github.com/DSpeichert/netbootd/config"
 	"github.com/DSpeichert/netbootd/store"
 	"github.com/pin/tftp"
 	"github.com/rs/zerolog"
@@ -15,17 +16,19 @@ type Server struct {
 	tftpServer *tftp.Server
 
 	logger   zerolog.Logger
-	store    *store.Store
+	store    store.Store
 	rootPath string
+	hints    config.ServerHints
 }
 
-func NewServer(store *store.Store, rootPath string) (server *Server, err error) {
+func NewServer(store store.Store, rootPath string, hints config.ServerHints) (server *Server, err error) {
 
 	server = &Server{
 		httpClient: &http.Client{},
 		logger:     log.With().Str("service", "tftp").Logger(),
 		store:      store,
 		rootPath:   rootPath,
+		hints:      hints,
 	}
 
 	return server, nil

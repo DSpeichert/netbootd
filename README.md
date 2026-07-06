@@ -243,11 +243,31 @@ Global Flags:
 ```
 
 Run e.g. `./netbootd --trace server -m ./examples/`
- 
+
+## Manifest store
+
+Manifests live in a pluggable store, selected with `store.backend`:
+
+* `memory` (default) — manifests exist only in RAM and are lost on restart.
+* `disk` — one YAML file per manifest under `store.diskPath`
+  (`/var/lib/netbootd/manifests/` by default); restored on startup.
+* `sqlite` — a SQLite database at `store.sqlitePath`
+  (`/var/lib/netbootd/manifests.sqlite3` by default).
+
+With `disk` or `sqlite`, manifests created or modified over the HTTP API
+persist across restarts. The `-m/--manifests` flag is an optional one-time
+import of a directory into the store at startup (no default); imported
+manifests are mutable via the API afterwards.
+
+> **Breaking change:** the default manifest location moved from
+> `/etc/netbootd/manifests` to `/var/lib/netbootd/manifests`, and manifests are
+> now mutable via the API. To keep loading an existing directory, pass it with
+> `-m` or point `store.diskPath` at it.
+
 ## Roadmap / TODOs
 
 * [x] API TLS & Authentication
-* [ ] Manifest persistence (currently API-configured manifests live in memory only)
-* [ ] Pluggable store backends (e.g. Redis, Etcd, files) for Manifests
+* [x] Manifest persistence (API-configured manifests can persist to disk or sqlite)
+* [x] Pluggable store backends (memory, disk, sqlite; e.g. Redis/Etcd can follow)
 * [ ] Notifications (e.g. long-polling wait to return when a given host actually booted)
 * [ ] Per-manifest logs available over API

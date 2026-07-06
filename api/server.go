@@ -2,7 +2,7 @@ package api
 
 import (
 	"encoding/json"
-	"io/ioutil"
+	"io"
 	"net"
 	"net/http"
 	"strings"
@@ -21,12 +21,12 @@ type Server struct {
 	httpServer *http.Server
 
 	logger zerolog.Logger
-	store  *store.Store
+	store  store.Store
 }
 
 // NewServer set up HTTP API server instance
 // If authorization is passed, requires privileged operation callers to present Authorization header with this content.
-func NewServer(store *store.Store, authorization, rootPath string) (server *Server, err error) {
+func NewServer(store store.Store, authorization, rootPath string) (server *Server, err error) {
 	r := mux.NewRouter()
 
 	server = &Server{
@@ -124,7 +124,7 @@ func NewServer(store *store.Store, authorization, rootPath string) (server *Serv
 			return
 		}
 
-		buf, _ := ioutil.ReadAll(r.Body)
+		buf, _ := io.ReadAll(r.Body)
 		var m manifest.Manifest
 		if r.Header.Get("Content-Type") == "application/json" {
 			m, err = manifest.ManifestFromJson(buf, rootPath)
@@ -141,7 +141,7 @@ func NewServer(store *store.Store, authorization, rootPath string) (server *Serv
 		}
 		err = store.PutManifest(m)
 		if err != nil {
-			http.Error(w, "error storing manifest: "+err.Error(), http.StatusBadRequest)
+			http.Error(w, "error storing manifest: "+err.Error(), http.StatusInternalServerError)
 			return
 		}
 		w.WriteHeader(http.StatusCreated)
@@ -155,7 +155,10 @@ func NewServer(store *store.Store, authorization, rootPath string) (server *Serv
 		}
 
 		vars := mux.Vars(r)
-		store.ForgetManifest(vars["id"])
+		if err := store.ForgetManifest(vars["id"]); err != nil {
+			http.Error(w, "error forgetting manifest: "+err.Error(), http.StatusInternalServerError)
+			return
+		}
 
 		w.WriteHeader(http.StatusNoContent)
 	}).Methods("DELETE")
@@ -183,7 +186,10 @@ func NewServer(store *store.Store, authorization, rootPath string) (server *Serv
 			http.Error(w, "not found", http.StatusNotFound)
 			return
 		}
-		m.Suspended = true
+		if err := server.store.SetSuspended(m.ID, true); err != nil {
+			http.Error(w, "error suspending boot: "+err.Error(), http.StatusInternalServerError)
+			return
+		}
 
 		w.WriteHeader(http.StatusOK)
 	}).Methods("GET", "POST")
@@ -211,7 +217,10 @@ func NewServer(store *store.Store, authorization, rootPath string) (server *Serv
 			http.Error(w, "not found", http.StatusNotFound)
 			return
 		}
-		m.Suspended = false
+		if err := server.store.SetSuspended(m.ID, false); err != nil {
+			http.Error(w, "error unsuspending boot: "+err.Error(), http.StatusInternalServerError)
+			return
+		}
 
 		w.WriteHeader(http.StatusOK)
 	}).Methods("GET", "POST")

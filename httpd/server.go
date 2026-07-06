@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/DSpeichert/netbootd/config"
 	"github.com/DSpeichert/netbootd/store"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
@@ -15,11 +16,12 @@ type Server struct {
 	httpServer *http.Server
 
 	logger   zerolog.Logger
-	store    *store.Store
+	store    store.Store
 	rootPath string
+	hints    config.ServerHints
 }
 
-func NewServer(store *store.Store, rootPath string) (server *Server, err error) {
+func NewServer(store store.Store, rootPath string, hints config.ServerHints) (server *Server, err error) {
 
 	server = &Server{
 		httpServer: &http.Server{
@@ -30,6 +32,7 @@ func NewServer(store *store.Store, rootPath string) (server *Server, err error) 
 		logger:   log.With().Str("service", "http").Logger(),
 		store:    store,
 		rootPath: rootPath,
+		hints:    hints,
 	}
 
 	server.httpServer.Handler = Handler{server: server}
