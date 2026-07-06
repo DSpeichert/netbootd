@@ -1,6 +1,7 @@
 package store
 
 import (
+	"errors"
 	"fmt"
 	"net"
 	"os"
@@ -12,6 +13,11 @@ import (
 	"github.com/rs/zerolog"
 	yaml "gopkg.in/yaml.v2"
 )
+
+// ErrInvalidManifest wraps the validation errors PutManifest returns for
+// client-supplied problems (missing ID/IPv4), so callers such as the HTTP API
+// can distinguish a 400 Bad Request from a 500 backend failure.
+var ErrInvalidManifest = errors.New("invalid manifest")
 
 // Config controls store backend selection and options.
 type Config struct {
@@ -134,16 +140,35 @@ func loadFromDirectory(put func(manifest.Manifest) error, path, rootPath string,
 	return nil
 }
 
-// setSuspended is the shared SetSuspended implementation: read, mutate, upsert.
-// Routing through the store's own PutManifest means persistence is handled by
-// whichever backend s is.
+// setSuspended is the shared SetSuspended implementation: read, mutate a copy,
+// upsert. Routing through the store's own PutManifest means persistence is
+// handled by whichever backend s is.
+//
+// It is important to copy *m before mutating: for the memory and disk
+// backends, Find returns the same pointer stored in the internal index, which
+// concurrent readers (Find/GetAll/FindByIP/FindByMAC) access without taking a
+// write lock. Mutating it in place would race with those reads.
 func setSuspended(s Store, id string, suspended bool) error {
 	m := s.Find(id)
 	if m == nil {
 		return nil
 	}
-	m.Suspended = suspended
-	return s.PutManifest(*m)
+	updated := *m
+	updated.Suspended = suspended
+	return s.PutManifest(updated)
+}
+
+// validateManifest checks the minimal invariants required for a manifest to
+// be stored. Both memoryStore and diskStore call this so that diskStore can
+// validate before writing to disk (see diskStore.PutManifest).
+func validateManifest(m manifest.Manifest) error {
+	if m.IPv4.IP == nil {
+		return fmt.Errorf("%w: no IPv4 address provided", ErrInvalidManifest)
+	}
+	if m.ID == "" {
+		return fmt.Errorf("%w: ID cannot be null", ErrInvalidManifest)
+	}
+	return nil
 }
 
 var validID = regexp.MustCompile(`^[A-Za-z0-9._-]+$`)

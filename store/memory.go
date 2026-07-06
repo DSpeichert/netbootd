@@ -1,7 +1,6 @@
 package store
 
 import (
-	"errors"
 	"net"
 	"sync"
 
@@ -44,11 +43,8 @@ func (s *memoryStore) LoadFromDirectory(path, rootPath string) error {
 }
 
 func (s *memoryStore) PutManifest(m manifest.Manifest) error {
-	if m.IPv4.IP == nil {
-		return errors.New("no IPv4 address provided")
-	}
-	if m.ID == "" {
-		return errors.New("ID cannot be null")
+	if err := validateManifest(m); err != nil {
+		return err
 	}
 
 	s.mu.Lock()

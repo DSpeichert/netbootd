@@ -51,13 +51,20 @@ func (s *diskStore) LoadFromDirectory(path, rootPath string) error {
 }
 
 func (s *diskStore) PutManifest(m manifest.Manifest) error {
+	if err := validateManifest(m); err != nil {
+		return err
+	}
+
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	if err := s.mem.PutManifest(m); err != nil {
+	// Write to disk before updating the in-memory index: if the write fails,
+	// the index must stay exactly as it was, so a caller that sees an error
+	// never has the store already serving the value it failed to persist.
+	if err := s.writeFile(m); err != nil {
 		return err
 	}
-	return s.writeFile(m)
+	return s.mem.PutManifest(m)
 }
 
 func (s *diskStore) ForgetManifest(id string) error {

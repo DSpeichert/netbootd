@@ -105,11 +105,8 @@ func (s *sqliteStore) LoadFromDirectory(path, rootPath string) error {
 }
 
 func (s *sqliteStore) PutManifest(m manifest.Manifest) error {
-	if m.IPv4.IP == nil {
-		return errors.New("no IPv4 address provided")
-	}
-	if m.ID == "" {
-		return errors.New("ID cannot be null")
+	if err := validateManifest(m); err != nil {
+		return err
 	}
 	blob, err := encodeManifest(m)
 	if err != nil {
@@ -208,6 +205,9 @@ func (s *sqliteStore) GetAll() map[string]*manifest.Manifest {
 		}
 		mc := m
 		res[id] = &mc
+	}
+	if err := rows.Err(); err != nil {
+		s.logger.Error().Err(err).Msg("GetAll row iteration failed")
 	}
 	return res
 }
