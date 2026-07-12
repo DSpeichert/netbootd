@@ -29,6 +29,9 @@ var (
 	apiTlsKey    string
 	manifestPath string
 	rootPath     string
+	storeBackend string
+	diskPath     string
+	sqlitePath   string
 )
 
 func init() {
@@ -53,11 +56,20 @@ func init() {
 	serverCmd.Flags().StringVarP(&ifname, "interface", "i", "", "interface to listen on, e.g. eth0 (DHCP)")
 	viper.BindPFlag("interface", serverCmd.Flags().Lookup("interface"))
 
-	serverCmd.Flags().StringVarP(&manifestPath, "manifests", "m", "", "load manifests from directory")
+	serverCmd.Flags().StringVarP(&manifestPath, "manifests", "m", "", "optional directory of manifests to import into the store once at startup")
 	viper.BindPFlag("manifestPath", serverCmd.Flags().Lookup("manifests"))
 
 	serverCmd.Flags().StringVarP(&rootPath, "root", "", "", "if not given as an absolute path, a mount's path.localDir is relative to this directory")
 	viper.BindPFlag("rootPath", serverCmd.Flags().Lookup("root"))
+
+	serverCmd.Flags().StringVar(&storeBackend, "store-backend", "", "store backend: memory (default), disk or sqlite")
+	viper.BindPFlag("store.backend", serverCmd.Flags().Lookup("store-backend"))
+
+	serverCmd.Flags().StringVar(&diskPath, "disk-path", "", "directory for the disk store backend")
+	viper.BindPFlag("store.diskPath", serverCmd.Flags().Lookup("disk-path"))
+
+	serverCmd.Flags().StringVar(&sqlitePath, "sqlite-path", "", "database file for the sqlite store backend")
+	viper.BindPFlag("store.sqlitePath", serverCmd.Flags().Lookup("sqlite-path"))
 
 	rootCmd.AddCommand(serverCmd)
 }
@@ -75,24 +87,34 @@ var serverCmd = &cobra.Command{
 			zerolog.SetGlobalLevel(zerolog.InfoLevel)
 		}
 
-		// set up store
-		store, _ := store.NewStore(store.Config{
-			// TODO: config
-			PersistenceDirectory: "",
+		// set up store per backend
+		st, err := store.NewStore(store.Config{
+			Backend:    viper.GetString("store.backend"),
+			DiskPath:   viper.GetString("store.diskPath"),
+			SQLitePath: viper.GetString("store.sqlitePath"),
+			RootPath:   viper.GetString("rootPath"),
 		})
+		if err != nil {
+			log.Fatal().Err(err).Msg("failed to initialize store")
+		}
+		defer st.Close()
+
+		// Optional one-time import of a manifest directory into the store.
 		if viper.GetString("manifestPath") != "" {
-			log.Info().Str("path", viper.GetString("manifestPath")).Msg("Loading manifests")
-			err := store.LoadFromDirectory(viper.GetString("manifestPath"), viper.GetString("rootPath"))
-			if err != nil {
-				log.Fatal().Err(err).Msg("Failed to load manifests")
+			log.Info().Str("path", viper.GetString("manifestPath")).Msg("Importing manifests")
+			if err := st.LoadFromDirectory(viper.GetString("manifestPath"), viper.GetString("rootPath")); err != nil {
+				log.Fatal().Err(err).Msg("Failed to import manifests")
 			}
 		}
-		store.GlobalHints.HttpPort = viper.GetInt("http.port")
-		store.GlobalHints.SyslogPort = viper.GetInt("syslog.port")
-		store.GlobalHints.ApiPort = viper.GetInt("api.port")
+
+		hints := config.ServerHints{
+			HttpPort:   viper.GetInt("http.port"),
+			ApiPort:    viper.GetInt("api.port"),
+			SyslogPort: viper.GetInt("syslog.port"),
+		}
 
 		// DHCP
-		dhcpServer, err := dhcpd.NewServer(viper.GetString("address"), viper.GetString("interface"), store)
+		dhcpServer, err := dhcpd.NewServer(viper.GetString("address"), viper.GetString("interface"), st)
 		if err != nil {
 			log.Fatal().Err(err).Msg("Failed to create DHCP server")
 		}
@@ -109,7 +131,7 @@ var serverCmd = &cobra.Command{
 		}
 
 		// TFTP
-		tftpServer, err := tftpd.NewServer(store, viper.GetString("rootPath"))
+		tftpServer, err := tftpd.NewServer(st, viper.GetString("rootPath"), hints)
 		if err != nil {
 			log.Fatal().Err(err).Msg("Failed to create TFTP server")
 		}
@@ -123,7 +145,7 @@ var serverCmd = &cobra.Command{
 		go tftpServer.Serve(connTftp)
 
 		// HTTP service
-		httpServer, err := httpd.NewServer(store, viper.GetString("rootPath"))
+		httpServer, err := httpd.NewServer(st, viper.GetString("rootPath"), hints)
 		if err != nil {
 			log.Fatal().Err(err).Msg("Failed to create HTTP server")
 		}
@@ -138,7 +160,7 @@ var serverCmd = &cobra.Command{
 		log.Info().Interface("addr", connHttp.Addr()).Msg("HTTP listening")
 
 		// Syslog service
-		syslogServer, err := syslogd.NewServer(store)
+		syslogServer, err := syslogd.NewServer(st)
 		if err != nil {
 			log.Fatal().Err(err).Msg("Failed to create Syslog server")
 		}
@@ -155,7 +177,7 @@ var serverCmd = &cobra.Command{
 		log.Info().Interface("syslog", syslogAddr).Msg("Syslog listening...")
 
 		// HTTP API service
-		apiServer, err := api.NewServer(store, viper.GetString("api.authorization"), viper.GetString("rootPath"))
+		apiServer, err := api.NewServer(st, viper.GetString("api.authorization"), viper.GetString("rootPath"))
 		if err != nil {
 			log.Fatal().Err(err).Msg("Failed to create HTTP API server")
 		}

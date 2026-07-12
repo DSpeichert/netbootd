@@ -19,10 +19,10 @@ type Server struct {
 	net.Interface
 	address *net.UDPAddr
 	logger  zerolog.Logger
-	store   *store.Store
+	store   store.Store
 }
 
-func NewServer(addr, ifname string, store *store.Store) (server *Server, err error) {
+func NewServer(addr, ifname string, store store.Store) (server *Server, err error) {
 	var ip net.IP
 	// only parse addr if non-zero length
 	if addr != "" {

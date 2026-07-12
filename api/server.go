@@ -2,7 +2,8 @@ package api
 
 import (
 	"encoding/json"
-	"io/ioutil"
+	"errors"
+	"io"
 	"net"
 	"net/http"
 	"strings"
@@ -10,6 +11,10 @@ import (
 
 	"github.com/DSpeichert/netbootd/manifest"
 	"github.com/DSpeichert/netbootd/store"
+	// storepkg is an alias for the same package: NewServer's "store" parameter
+	// shadows the package name within its body, so ErrInvalidManifest needs a
+	// distinct identifier to reference.
+	storepkg "github.com/DSpeichert/netbootd/store"
 	"github.com/gorilla/mux"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
@@ -21,12 +26,12 @@ type Server struct {
 	httpServer *http.Server
 
 	logger zerolog.Logger
-	store  *store.Store
+	store  store.Store
 }
 
 // NewServer set up HTTP API server instance
 // If authorization is passed, requires privileged operation callers to present Authorization header with this content.
-func NewServer(store *store.Store, authorization, rootPath string) (server *Server, err error) {
+func NewServer(store store.Store, authorization, rootPath string) (server *Server, err error) {
 	r := mux.NewRouter()
 
 	server = &Server{
@@ -79,6 +84,7 @@ func NewServer(store *store.Store, authorization, rootPath string) (server *Serv
 			return
 		}
 		var b []byte
+		var err error
 		if strings.Contains(r.Header.Get("Accept"), "application/json") {
 			w.Header().Set("Content-Type", "applications/json")
 			b, err = json.Marshal(m)
@@ -102,6 +108,7 @@ func NewServer(store *store.Store, authorization, rootPath string) (server *Serv
 		}
 
 		var b []byte
+		var err error
 		if strings.Contains(r.Header.Get("Accept"), "application/json") {
 			w.Header().Set("Content-Type", "applications/json")
 			b, err = json.Marshal(store.GetAll())
@@ -124,7 +131,11 @@ func NewServer(store *store.Store, authorization, rootPath string) (server *Serv
 			return
 		}
 
-		buf, _ := ioutil.ReadAll(r.Body)
+		buf, err := io.ReadAll(r.Body)
+		if err != nil {
+			http.Error(w, "error reading request body: "+err.Error(), http.StatusBadRequest)
+			return
+		}
 		var m manifest.Manifest
 		if r.Header.Get("Content-Type") == "application/json" {
 			m, err = manifest.ManifestFromJson(buf, rootPath)
@@ -139,9 +150,12 @@ func NewServer(store *store.Store, authorization, rootPath string) (server *Serv
 				return
 			}
 		}
-		err = store.PutManifest(m)
-		if err != nil {
-			http.Error(w, "error storing manifest: "+err.Error(), http.StatusBadRequest)
+		if err := store.PutManifest(m); err != nil {
+			status := http.StatusInternalServerError
+			if errors.Is(err, storepkg.ErrInvalidManifest) {
+				status = http.StatusBadRequest
+			}
+			http.Error(w, "error storing manifest: "+err.Error(), status)
 			return
 		}
 		w.WriteHeader(http.StatusCreated)
@@ -155,7 +169,10 @@ func NewServer(store *store.Store, authorization, rootPath string) (server *Serv
 		}
 
 		vars := mux.Vars(r)
-		store.ForgetManifest(vars["id"])
+		if err := store.ForgetManifest(vars["id"]); err != nil {
+			http.Error(w, "error forgetting manifest: "+err.Error(), http.StatusInternalServerError)
+			return
+		}
 
 		w.WriteHeader(http.StatusNoContent)
 	}).Methods("DELETE")
@@ -183,7 +200,10 @@ func NewServer(store *store.Store, authorization, rootPath string) (server *Serv
 			http.Error(w, "not found", http.StatusNotFound)
 			return
 		}
-		m.Suspended = true
+		if err := server.store.SetSuspended(m.ID, true); err != nil {
+			http.Error(w, "error suspending boot: "+err.Error(), http.StatusInternalServerError)
+			return
+		}
 
 		w.WriteHeader(http.StatusOK)
 	}).Methods("GET", "POST")
@@ -211,7 +231,10 @@ func NewServer(store *store.Store, authorization, rootPath string) (server *Serv
 			http.Error(w, "not found", http.StatusNotFound)
 			return
 		}
-		m.Suspended = false
+		if err := server.store.SetSuspended(m.ID, false); err != nil {
+			http.Error(w, "error unsuspending boot: "+err.Error(), http.StatusInternalServerError)
+			return
+		}
 
 		w.WriteHeader(http.StatusOK)
 	}).Methods("GET", "POST")
@@ -240,12 +263,13 @@ func NewServer(store *store.Store, authorization, rootPath string) (server *Serv
 			return
 		}
 		var b []byte
+		var err error
 		if strings.Contains(r.Header.Get("Accept"), "application/json") {
 			w.Header().Set("Content-Type", "applications/json")
-			b, err = json.Marshal(store.GetAll())
+			b, err = json.Marshal(m)
 		} else {
 			w.Header().Set("Content-Type", "text/yaml")
-			b, err = yaml.Marshal(store.GetAll())
+			b, err = yaml.Marshal(m)
 		}
 		if err != nil {
 			http.Error(w, "error marshalling manifest: "+err.Error(), http.StatusInternalServerError)

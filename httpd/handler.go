@@ -149,9 +149,9 @@ func (h Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			},
 			ApiBaseUrl: &url.URL{
 				Scheme: "http",
-				Host:   net.JoinHostPort(laddr.String(), strconv.Itoa(h.server.store.GlobalHints.ApiPort)),
+				Host:   net.JoinHostPort(laddr.String(), strconv.Itoa(h.server.hints.ApiPort)),
 			},
-			SyslogHost: net.JoinHostPort(laddr.String(), strconv.Itoa(h.server.store.GlobalHints.SyslogPort)),
+			SyslogHost: net.JoinHostPort(laddr.String(), strconv.Itoa(h.server.hints.SyslogPort)),
 			Manifest:   manifest,
 		})
 		if err != nil {

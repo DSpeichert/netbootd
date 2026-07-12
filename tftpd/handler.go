@@ -157,13 +157,13 @@ func (server *Server) tftpReadHandler(filename string, rf io.ReaderFrom) error {
 			RemoteIP: raddr.IP,
 			HttpBaseUrl: &url.URL{
 				Scheme: "http",
-				Host:   net.JoinHostPort(laddr.String(), strconv.Itoa(server.store.GlobalHints.HttpPort)),
+				Host:   net.JoinHostPort(laddr.String(), strconv.Itoa(server.hints.HttpPort)),
 			},
 			ApiBaseUrl: &url.URL{
 				Scheme: "http",
-				Host:   net.JoinHostPort(laddr.String(), strconv.Itoa(server.store.GlobalHints.ApiPort)),
+				Host:   net.JoinHostPort(laddr.String(), strconv.Itoa(server.hints.ApiPort)),
 			},
-			SyslogHost: net.JoinHostPort(laddr.String(), strconv.Itoa(server.store.GlobalHints.SyslogPort)),
+			SyslogHost: net.JoinHostPort(laddr.String(), strconv.Itoa(server.hints.SyslogPort)),
 			Manifest:   manifest,
 		})
 		if err != nil {

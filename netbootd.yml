@@ -29,5 +29,18 @@ api:
 http:
   port: 8080
 
-# Set to directory from which initial manifests will be loaded at startup
+# Manifest store. The store always holds the working set consulted while a host
+# boots (including runtime enable/disable). "memory" (the default) is ephemeral;
+# "disk" and "sqlite" persist API-managed manifests across restarts.
+store:
+  # backend: memory | disk | sqlite
+  backend: memory
+  # directory used by the disk backend
+  diskPath: /var/lib/netbootd/manifests/
+  # database file used by the sqlite backend
+  sqlitePath: /var/lib/netbootd/manifests.sqlite3
+
+# Optional: a directory of manifests to import into the store once at startup.
+# Useful for seeding or migrating; imported manifests are mutable via the API
+# afterwards. No default.
 #manifestPath: /etc/netbootd/manifests/
